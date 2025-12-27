@@ -1,0 +1,54 @@
+r  ..LLL..  0 UL.t -.J
+
+
+
+FILE: SU45    NEXTSTEP A1  UKAEA VM/SP-CMS
+
+IMPLEMENTATION PHASE TO 5.2
+
+UPDATE FACILITY.
+
+Program needs to determine whether there is a database file or not - could be by use of FTN77 INQUIRE statement and/or an attempt to read database in. If file doesn't exist or contain data, then 'CREATE'  is the only option in DATA. If a database exists, then 'UPDATE' or 'RECREATE' modes are possible. In RECREATE, process is just as at present, and database content is overwritten. In 'UPDATE', two policies are possible:
+
+a) New data may not replace existing data, but merely add to it, ie. if both 'FROM'  and 'TO' exist already, then the leg will be treated as a loop closure, even if it merely replaces an existing leg. This would be simple to implement, and would be fine for
+updating the image of a survey whose existing data had all been input correctly. If however, part of the update data was an error correction or resurvey, this method would not work either in
+UPDATE or RECREATE. The new data would have to be merged correctly with the old, and RECREATE used on the entire dataset.
+
+b) New data would be able to replace existing data within the survey
+image. This would entail several potential problems.
+
+1) When an existing leg is redefined, its starting point would be assumed known, and its end would be redefined. If the leg
+was a correction for a gross error, and all legs in the previous survey were assumed o.k., then all points determined through this leg, ie. all of the survey hanging from the end, would
+now be in error and the coordinates need to be recalculated. This is, in principle, analogous to starting the COORDS routine part way through, except that OINDEX would always be non-zero, and closures could not be recognised. The only obvious way round this would be to utilise only the updated vector info and calculate ALL coordinates from scratch, but this defeats slightly more than 50% of the object of an UPDATE option.
+
+2) If a resurvey is added, then in addition to the problems with the survey beyond the endpoint of the new dita ( if any ),	there is also the problem of deleting the old survey section which
+the resurvey is to replace, but which will undoubtably USE DIFFERENT SURVEY STATIONS. ie. the new survey will not obviously overlay the old as in the case of corrected survey data. In particular, if a resurvey is necessitated because two routes to the same point misclose badly, the program will have no way of knowing which of the routes is being replaced unless some specific input is provided to specify deletion.
+
+POSSIBLE CONCEPTS TO OVERCOME PROBLEMS.
+
+a) Subsurvey concept.
+     The survey as input is broken into subsurveys, each with a six- char name, or arbitrarily allocated number, which, however, the surveyor must have access to. Each subsurvey is an unbroken, unbranched string of survey legs, and a table is maintained of relationships between strings so that the program can work out which sets of coordinates need to be recalculated for each type of update.
+
+Advantages:	
+Perfect for eventual extension to loop closure algorithms which would need the data divided up in just this way.
+
+Could be used to enable hanging surveys and data which had been surveyed-out to be dealt with.
+
+Disadvantages: 
+The burden of keeping track of subsurveys would inevitably fall on the surveyor when updates were needed. This would be especially onerous in precisely the sorts of systems where partial resurveys are likely - long interconnected systems with many loops.
+
+Considerable code complexity, which is probably unjustified unless loop closure is planned.
+
+b) Partial reprocessing
+      The situation as the program sees it,	is rather like a survey input with some of the data from the middle omitted until the end, except that there is some temporary data in the middle to suppress the 'UNDEFINED' problems. The program can best cope by resequencing the data itself, and then reprocessing forward from the newly inserted data.
+Advantages:
+No burden on the surveyor to keep track of where data is sequenced.
+
+Easy extension to enable data to be input in an arbitrary sequence.
+
+Disadvantages: 
+Requires a lot of extra data space for duplicate tables while data is being resequenced.
+
+c) 
+
+[fanfold lineprinter printout found - scanned, OCR'd and hand-corrected 24/12/2025]

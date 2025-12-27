@@ -1,0 +1,61 @@
+! Updated    15.48    29 October 1984   PMS1
+!
+comment SU5.13c Survey program.
+request 'data file:             'data!cucc.su:t142
+request 'frame data file:       'pcin!gaj1.su.frame:default
+request 'database file  :       'dbase!gaj1.su.dbase:last
+request 'member name for plots: 'label!test
+request 'command file           'comms!gaj1.su.comms:default
+comment
+comment Data title is:
+print <data!> opt sa(1)
+comment
+comment Using frame file: <pcin!>
+pass dbase pcin data label
+setjdlocal class a
+runfile from %h:
+notify <%user> <%jnumber> <data!> <label!> <pcin!> begin
+errlabel -error
+info time
+passlocal store=400 time=4
+passlocal listc <listc!nosource>
+file <data!> to &sysin/fb
+!
+! the PCIN file is a single line of scale (400 means 1:400),
+! bearing (of long axis, in degrees), paper length limits
+! (in real ground metres), paper width limits (ditto) and
+! paper height limits (ditto).
+file from <pcin!> to &pcin/w/fb
+file from <comms!> to &ttyin/fb
+setupglobal (mylib=montec.lib)
+if <dbase!> is available  +++
+ then file <dbase!> to &dbase/fba
+Comment Now wait for linking message and prompt...
+ftfjlg object=montec.lib:su513c+++
+ library=CAMPLOT.FORTLIB+++
+ output=&suout/w/fba +++
+ dd=' plot=&SUPLOT/w/fb +++
+      ft01f001=&sysin +++
+      ft02f001=&pcin  +++
+      ft03f001=&ttyin +++
+      ft04f001=&dbase/w/fba +++
+      ft09f001=&ttyout/w/fba'+++
+ lkin=%h%
+ INCLUDE MYLIB(SUPLOT)
+%
+delete &phxlmod
+delete mylib
+info time
+print &ttyout to &suout/mod
+print &suout
+file &dbase to <dbase!>
+file &suplot to gaj1.su.plots:<label!>/fb
+notify <%user> <%jnumber> <data!> <label!> <pcin!> ended OK
+quit
+-error
+notify <%user> <%jnumber> <data!> <label!> <pcin!> FAILED
+comment >> SU5.13c <data!> failed.
+delete &phxlmod
+delete mylib
+print &ttyout
+:

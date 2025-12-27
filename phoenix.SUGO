@@ -1,0 +1,186 @@
+! Updated    11.45    7 November 1984   PMS1
+!
+! This command sequence is now pretty slick to run
+! at a terminal. What happens is that the first time
+! you run it, it takes the programs (which are already
+! compiled in a library) and link-edits them together
+! with the graphics routines required and the fortran
+! library etc. into a load-module which sits on your
+! file-space as a temporary file &sulmod:go .
+! The next (and subsequent) times you run it, it
+! accesses this module directly and runs immediately,
+! whereas it can take 2 minutes (real time!) the first
+! time (if it's the middle of the day). It is not sensible
+! to keep the load module around on disc the whole time
+! because it is vast.
+!
+! This routine is still under development and is not
+! yet %quite bomb-proof for inexperienced users. It needs
+! better error-trapping at the moment, both in the
+! Phoenix and in the fortran plotting subroutine SUPLOT
+! (also written by me, based on AERW's GHOST version).
+! I've only just got the hang of writing fully inter-
+! active fortran software, so give me a chance!
+!
+!    Philip Sargent                    1 Nov. 1984
+!
+!
+%errlabel -phxerr
+%comment
+%comment SU5.13c Survey program.
+%comment
+-start
+%if sunarr is unset and suwide is unset and suvers is unset then %jump -check
+%if suvers is set then %if sunarr is set or suwide is set then %jump -opterr
+%if sunarr is set then %if  suwide is set then %jump -opterr
+%if  suwide is set then %comment >> Wideplot output.
+%if sunarr is set then %comment >> Normal plot output.
+%if suvers is set then %comment >> Versatec plot output.
+%comment
+%request 'data file:             'data!gaj1.su.data:ahill
+%unless <data!> is available then "%comment No data file."%jump -start"
+-frame
+%request 'frame data file:       'pcin!gaj1.su.frame:default
+%unless <pcin!> is available then "%comment No frame file."%jump -frame"
+%request 'plots file:            'plots!gaj1.su.plots:test
+%comment
+!
+! Data file is in format described by the very complete documentation
+! written by AERW. There are two files containing this, with and without
+! carridge controls: cucc.survey.guide:cc and cucc.survey.guide.nocc
+! and both are on the TLS tape cucc01. Recommended on phoenix is the
+! one with controls ( .cc) which you should 'printout'.
+!
+! The PCIN file is a single line of scale (400 means 1:400),
+! bearing (of long axis, in degrees), paper length limits
+! (in real ground metres), paper width limits (ditto) and
+! paper height limits (ditto).
+! BE CAREFUL: when the same frame file is used to produce
+! both a plan and an elevation, on the elevation the
+! length along the paper is the same as the length along
+! the paper for the plan, merely the height parameters are
+! used for the width across the paper. BUT that is ONLY TRUE
+! if you are using exactly the same frame file. If you then
+! use another frame file with orientation 90 degrees (instead
+! of 0 degrees = N along the length), your 'length' parameters
+! should be set to the 'width' parameters for the 0 degree case,
+! except that the signs are reversed and the limits exchanged!
+! Think about it. It makes sense really.
+! What makes less sense is the sense of the axes for plan
+! plots: +ve along paper and +ve upwards is fine for elevations,
+! but for plans it means that +ve along paper is +ve Northwards,
+! but +ve up-paper is +ve WESTWARDS, not Eastwards as you might
+! expect. This is not a bug: whichever way it were organised it
+! would confuse somebody...
+!
+%comment >> Using data file:    <data!>
+%comment >> Using frame file:   <pcin!>
+%comment >> Using plot file:    <plots!>
+%comment
+%comment Data title is:
+%print <data!> opt sa(1)
+%comment
+info time
+%if &sulmod:go is available then %jump -go
+!
+! This link editing step uses the program SU 5.13c
+! which should already be compiled in the library.
+! To do this at a terminal, do this:
+! ftfjc object=montec.lib:su513c program=cucc.survey.su513c
+! and it will compile interactively. Similarly, you will
+! have to do this for all three of the different subroutine
+! versions, which differ ONLY in the data declaration
+! DATA PWIDTH / 300.0 / in the subroutine SUPLOT. This
+! parameter gives the width of the paper in the device in
+! millimetres. Narrow=300.0, Wide=850.0, Versatec=268.0mm.
+!
+%if mylib is available then %delete mylib
+%setupglobal (mylib=montec.lib)
+%comment Now wait for linking message...
+%file from %h% to &narr/fblk
+ INCLUDE MYLIB(SUPLOT)
+%
+%file from %h% to &wide/fblk
+ INCLUDE MYLIB(SUPLOTW)
+%
+%file from %h% to &vers/fblk
+ INCLUDE MYLIB(SUPLOTV)
+%
+%if suwide is set then passlocal lkin=&wide
+%if sunarr is set then passlocal lkin=&narr
+%if suvers is set then passlocal lkin=&vers
+%errlabel -lkederr
+lked object=montec.lib:su513c+++
+ loadmod &sulmod:go/kb=50,100/dir=1+++
+ library=camplot.fortlib+res.fortfj.library+++
+ optl=call
+%delete mylib
+%delete &narr,&wide,&vers
+info time
+-go
+%errlabel -goerr
+%if &suplot is available then %delete &suplot
+passlocal store=400 time=4
+%file <data!> to &sysin/fb
+%file from <pcin!> to &pcin/w/fb
+%comment Wait for prompts & reply DATA ELEV PLAN EXIT etc
+ftfjg  output=&suout/w/fba +++
+ loadmod &sulmod:go+++
+ dd=' plot=&SUPLOT/fb/mod +++
+      ft01f001=&sysin +++
+      ft02f001=&pcin  +++
+      ft03f001=* +++
+      ft04f001=&dbase/w/fba +++
+      ft05f001=*'
+printout &suout
+%file &suplot to <plots!>/fb
+view &suplot opt e
+%comment
+%request '>> send plot to hardcopy device ? 'reply!yes
+%if reply uceq 'yes' or reply uceq 'y' or reply uceq '+' then %jump -plotout
+%comment >> SU 5.13c finished.
+%comment
+%quit
+-plotout
+%if suwide is set then plotout &suplot to %wideplot
+%if sunarr is set then plotout &suplot
+%if suvers is set then "%vtran inplot=&suplot to &#$sup"%versatecout &#$sup"
+%comment >> Plot sent to hardcopy device, SU 5.13c finished.
+%comment
+%quit
+-phxerr
+%comment >> Whoops. Phoenix error, personal apology from Philip.
+%comment
+%quit
+-lkederr
+%if mylib is available then %delete mylib
+%delete &sulmod
+%comment
+%comment >> SU error in link-editing step, check library:
+%comment
+%examine montec.lib
+%xpds montec.lib
+%comment
+%quit
+-goerr
+%comment
+%comment >> SU error in go step. Probably data plotted outside frame:
+%comment
+%print &pcin
+%comment
+%quit
+-opterr
+%comment
+%comment >> Too many plotter options set.
+%comment
+-check
+%unglobal sunarr suwide suvers
+%request '>> Which plotter option: (narr, wide or vers) 'popt
+%if popt uceq 'narr' or popt uceq 'n' then global sunarr +
+%if popt uceq 'wide' or popt uceq 'w' then global suwide +
+%if popt uceq 'vers' or popt uceq 'v' then global suvers +
+%if sunarr is unset and suwide is unset and suvers is unset then %jump -check
+%comment >> Changing plotter option means re-linking program.
+%if &sulmod is available then %delete &sulmod
+%jump -start
+%quit

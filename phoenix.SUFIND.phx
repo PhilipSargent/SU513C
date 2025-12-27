@@ -1,0 +1,5 @@
+request 'name of file to be searched: 'sf
+zed <sf!> with pms1.c:suedit to &sf1/w
+pasclg program pms1.c:supasc input &sf1 output &sf2/w
+print &sf2
+

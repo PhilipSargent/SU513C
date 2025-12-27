@@ -1,0 +1,35 @@
+ 32 Windloch          1557
+ 41 Stellerweghohle   1611
+ 41b   ( top ent. )   1625
+ 82 Brauninghohle     1655
+ 83 ( see CU 78 )     1668
+ 85 ( see CU 78 )     1655
+ 87 ( see CU 81 )     1523
+ 92   not yet on survey
+ 95    "   "  "    "
+ 96    "   "  "    "
+ 97 Schneewindschacht 1636
+ 99 ( unfinished )    1636
+105 ( see CU 78 )     1644
+106 Eislufthohle      1642
+107 Gamshohle         1659
+113 Sonnenstrahlhohle 1631
+115 Schnellzughohle   1467
+136 Steinschlagschacht 1797
+142                   1603
+143 must go top ent.  1697
+144 won't go ditto    1698
+145 Wolfhohle         1686
+145c highest ent.     1696
+148 unexplored 1984   1651
+
+Tolerances are +-3.5m on Stellerweg from sightings,
++-1m on survey errors
+
++-2m on uncertainty of starting pont,
++-2m for errors, for plateau.
+
+Probably same for Schwarzmoos to Steinschlag.
+
+Hope these are useful. Andy.
+
