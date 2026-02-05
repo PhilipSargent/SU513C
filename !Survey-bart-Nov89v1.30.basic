@@ -1,0 +1,2187 @@
+﻿10REM > $.!Survey.!RunImage 
+20 
+30REM Bart, November 1989 v1.30 
+40 
+S50REM This Cave Surveying program is based on Waddingtons SU BBC / SU 1/65 
+60 
+700N ERROR MODE 12 : REPORT : PRINT" at line ";ERL : END 
+
+80 
+90PROCinitmain 
+
+100PROCinitsurvey 
+110PROCinitprint 
+120PROCdisplay 
+130CLS 
+140END 
+150 
+160DEF PROCinitmain 
+170REM Station data structure 
+180maxstations® = 1500 
+190stationsize% = 40 
+200s_name% = 0 
+210s _flags% = 8 
+220s_tocount$% = 12 
+230s_fromcount% = 16 
+240s_x5% = 20 
+250s_y% = 24 
+260s_z% = 28 
+270s_w%3 = 32 
+280s_h% = 36 
+230 
+300mo_bit% = %10000000 :REM Mole Phone 
+310vz_bit% 301000000 :REM Visited 
+320o0r bit% 300100000 :REM Origin 
+330cl bit} = %00010000 :REM Part of a closure loop 
+340 
+350REM Vector data structure 
+360maxvectors® = 1500 
+370vectorsize¥ = 32 
+380v_from% = § 
+390v_to% = 4 
+400v_length% = 8 
+410v_bearing% = 12 
+420v_incline% = 16 
+430v_dx% = 20 
+440v_dy% = 24 
+450v_dz% = 28 
+460 
+470REM Information on survey 
+480maxsurveyss = 50 
+490surveysizes = 170 
+500survey no% = 0 :REM The number of surveys, the north pointer 
+510x north% = 4 :REM position and the survey rotation just 
+520y north% = 8 :REM appear once in the information 
+530su_rot% = 12 :REM Along with the extent of the whole system 
+540su mags = 16 :REM magnification 
+550su_sta% = 20 :REM Total number of stations 
+560su_vec$% = 24 :REM and vectors 
+570x min% = 28 :REM Extent of whole system 
+580y min% = 32 
+590z min3% = 36 
+600x max% = 40 
+610y max% = 44 
+620z_max3 = 48 
+630total len? = 52 :REM total length of all merged surveys 
+640 
+650statinoon% = 0 :REM Each survey has number of stations 
+660vectonor% = 4 :REM number of vectors 
+670start sta% = 8 :REM Start position in main station list 
+680start vec? = 12 
+690survey len% = 16 :REM Along with its length 
+700title% = 20 :REM title length currently 50 bytes 
+710people% = 70 :REM list of surveyors
+
+
+
+720date% = 120 :REM date of survey 
+730 
+740DIM stations% maxstations$%$*stationsize%, slist% (maxstations$%, 3)
+750DIM vectors% maxvectors$%$*vectorsize%, pt% (maxvectors3, 3) 
+760DIM info% maxsurveys3*surveysize3 
+770 :REM Styles 
+780Diving = 0 :REM Length, bearing, absolute depth 
+790Normal 1 :REM Length, bearing, inclination 
+800UpDown = 2 :REM Length, bearing, relative depth 
+810 
+820F ree 0 :REM Formats 
+830Fixed = 1 
+840 
+850Raw 0 :REM Input conversion flags 
+860Units 1 
+870Internal = 2 
+880 
+890filepath$ "<Survey$Dir>.SurveyData." 
+900filename$ 
+910 
+920maxfiles$% 4 
+930DIM handle% (maxfiles%), file$ (maxfiles$%) 
+940eptr® = 0 
+950eflgss = 0 
+960 
+970DIM buf% 255, tmp3 (50) :REM Some storage 
+980CR = 13 
+990tl1l% = 0 :REM Some global temporary vars 
+
+1000t2% = 0 
+1010ENDPROC 
+
+1020 
+1030DEF PROCinitsurvey 
+1040info%!survneoy% = 0 
+1050info%!'x north% = 0 
+1060info%!y north% = 0 
+1070info%!su _rot% = 0 
+1080info%!stsau% = 0 
+1090info%!su _vec% = 0 
+1100info%!su _mag% = 100 :REM Full size 
+1110info%m!inx% = 1E6 :REM extent of cave system 
+1120info%m!iny% = 1E6 
+1130info%m!inz% = 1E6 
+1140info%m!axx% = -1E6 
+1150info%m!axy% = -1E6 
+1160info%!z max% = -1E6 
+1170info%!tolteanl% = 0 
+1180info%! (surveysize%¥+station no%) = 0 
+1190info%! (surveysize%+vector no%) = 0 
+1200info%! (surveysize%+start sta%) = 0 
+1210info%! (surveysize%+start vec%) = 0 
+1220info%! (surveysize%+survey len%) = 0 
+12308 (info%+surveysize%+title%) = "" 
+12408 (info%+surveysize$+people%) = "" 
+12508 (info%+surveysize%$+date%) = "" 
+1260style% = Normal 
+1270format% = Free 
+1280depth = 0.0 :REM current depth 
+1290unit_factor = 1.0 :REM default to metres 
+1300factors = 10 :REM to convert to internal format 
+1310compass_adj = .0 :REM correction for compass bearings 
+1320clino_adj = 0. :REM and clinometer readings 
+1330surface depth 0.0 :REM initial error on depth gauge 
+1340gauge_factor = 1.0 :REM and correction factor 
+135001d _to$ = "" :REM Previous survey station 
+13601leg$ = "" :REM station at start of leg 
+13701leg% = 0 :REM number stations in this leg 
+1380handle%() = 0 
+1390files% = 0 
+1400survey% = FALSE 
+1410st_no% = 0 :REM station number 
+1420st_name$ = "" :REM station name 
+
+| 
+
+Ih © o 
+
+
+
+1430st_base% = 0 
+1440su_no% = 0 :REM survey number 
+1450ENDPROC 
+1460 
+1470DEF PROCinitdisplay 
+14800FF 
+1490PROCtrig 
+1500*WimpPalette <Survey$Dir>. !'Palette 
+1510*Pointer 1 
+1520helps = "" 
+15300l1dhelp$ 
+1540helonp% = TRUE 
+1550mx% = 0 : my = 0 : mb = 0 
+1560wxi%=0 : wyi%=0 
+1570v1x3%= : vby3%=0 : vrx%=959 : vty%=959 
+1580wlx%=1E6 : wby%=1E6 : wrx%=-1E6 : wty%=-1E6 
+1590mlx%=vrx% : mby3%=0 : mrx%=1279 : mty3=vty% 
+16000rgx% = 0 : orgys = 0 
+1610vDU 23, 255, 255,255,255,255,255,255,255,255 
+1620bank% = 1 
+1630Plan = 0 
+1640Side = 1 
+1650Elev = 2 
+1660viewd% = Plan 
+1670grid% = FALSE 
+1680quit% = FALSE 
+1690e_bit% 1 
+1700s_bit% 2 
+17101 _bit% 4 
+1720p bit% 8
+1730*Fx 4 1 
+
+1740*Fx 112, 2 
+1750PROCinitnorth 
+1760PROCiniticons 
+1770PROCshow (st_no%,wlx%,wby%,wrx%,wty?, e bit% OR s bit% OR i bit% OR p bit%) 
+1780*Fx 112, 1 
+
+1790PROCshow (st_no%,wlx%,wby%,wrx%,wty%, e bit% OR s _bit% OR i bit% OR p bit%) 
+18 00ENDPROC 
+
+1810 
+1820DEF PROCinitnorth 
+1830RESTORE 1910 
+1840READ Npts$ 
+1850DIM north% (Npts%, 3) 
+1860FOR i% = 1 TO Npts$% 
+1870 FOR j% = 0 TO 3 
+1880 READ north%(i%, 3%) 
+1890 NEXT 
+1900NEXT 
+1910DATA 7 
+
+1920DATA 32,0, 32,96, 0,64, 32,96, 64,64, 32,96, 16,32, 48,32 :REM arrow 
+1930DATA 16,112, 16,144, 16,144, 48,112, 48,112, 48,144 :REM N 
+1940ENDPROC 
+
+1950 
+1960DEF PROCiniticons 
+1970LOCAL icon$ 
+1980maxicons% = 35 
+1990DIM icon$ (maxicons%, 1) 
+2000RESTORE 2150 
+
+20101iw% = 80 
+2020ih% = 80 
+2030icons% = -1 
+2040READ icon$, help$ 
+2050WHILE icon$ <> "!*"© 
+2060 icons% += 1 
+2070 icon$ (icons%, 0) = icon$ 
+2080 IF help$ = "" THEN help$ = icon$(icons%-1, 1) 
+2090 icon$ (icons%, 1) = help$ 
+2100 READ icon$, help$ 
+2110ENDWHILE 
+
+21201x$% mlx$% 
+2130iy% mty%+4 
+
+
+
+2140 
+2150DATA new, " Read a new survey " 
+2160DATA load, " Load existing " 
+2170DATA save, "Save current survey” 
+2180DATA merge, " Merge survey” 
+2190 
+2200DATA grid, " Toggle 0S grid" 
+2210DATA north, "Move North Pointer" 
+2220DATA swap, " Swap survey" 
+2230DATA command, " Use command line" 
+2240 
+2250DATA datal, " Print Data" 
+2260DATA paper, " Change paper size" 
+22°70DATA print, Print survey" 
+2280DATA quit, " Exit program" 
+2290 
+2300DATA next, "Next survey station” 
+2310DATA sleft, " Station name" 
+2320DATA sright, 
+2330DATA prev, " Previous station" 
+2340 
+2350DATA view, " Change view" 
+2360DATA zoomin, " Reduce Survey" 
+2370DATA magnify, " Set Magnification" 
+2380DATA zoomout, " Magnify Survey" 
+2390 
+2400DATA upleft, " Position controls" 
+2410DATA up, 
+2420DATA upright, 
+2430DATA rotright, "Change orientation” 
+2440DATA left, " Position controls” 
+2450DATA help, "Toggle help on/off" 
+2460DATA right, " Position controls” 
+2470DATA degree, "Bearing from North" 
+2480DATA downleft, " Position controls” 
+2490DATA down, 
+2500DATA downright, 
+2510DATA rotleft, "Change Orientation” 
+2520DATA { "ve 
+
+LI 4 
+
+2530ENDPRO 
+2540 
+2550DEF PROCinitprint 
+2560DIM wnd% 16, mat% 16, org% 16, blk% 16 
+2570printfile$ = "printer:" 
+2580papersize? = 4 
+25900S_Scale% = 50000 
+2600SYS "OS _SWINumberFromString",, "PDriver SelectJob" TO selectjob% 
+2610SYS "OS_SWINumberFromString",, "PDriver AbortJob" TO abortjob% 
+2620SYS "OS_SWINumberFromString",, "PDriver GiveRectangle" TO giverect% 
+2630SYS "OS_SWINumberFromString",, "PDriver DrawPage" TO drawpage$ 
+2640SYS "OS SWINumberFromString”,, "PDriver GetRectangle" TO getrect% 
+2650SYS "OS _SWINumberFromString”,, "PDriver EndJob"™ TO endjob% 
+2660SYS "PDriver PageSize" TO , p x%, pVv%, p_ 1%, p b%, pr%, pt% 
+2670PROCsetbl(woncd%k, 0, -50, 1279, 1799) 
+2680PROCsetbl(moact%k, 1<<16, 0, 0, 1<<16) 
+2690PROCsetbl(orcg%k, p 1%, p b%+72000, 0, O) 
+2700ENDPROC 
+
+2710 
+
+2720DEF PROCdisplay 
+2730PROCinitdisplay 
+2740REPEAT 
+
+2750 PROCmous(0e) 
+2760 IF FNonicons (mx%, my%) THEN 
+2770 icon% = FNiconnumb(mex%r, my%) 
+2780 PROChelp(icon$ (icon%, 1), 12, 13) 
+2790 IF mb% > 0 THEN 
+
+2800 REM Peter 
+
+2810 REM flags% = EVAL("FN"+icon$ (icon%, 0)) 
+2820 REM GOTO 3090 ? just after ENDCASE ! 
+2830 CASE icon$(icon%, 0) OF 
+2840 WHEN "new" flags% = FNnew
+
+
+
+2850 WHEN "load" flags% = FNload 
+2860 WHEN "save" flags = FNsave 
+2870 WHEN "merge" flags% = FNmerge 
+2880 WHEN "grid" flags% = FNgrid 
+2890 WHEN "north" flags% = FNnorth 
+2900 WHEN "swap" flags% = FNswap 
+2910 WHEN "command" flags% = FNcommand 
+2920 WHEN "datal"™ flags% = FNdatal 
+2930 WHEN "paper" : flags? = FNpaper 
+2940 WHEN "print" : flags% = FNprint 
+2950 WHEN "quit" : flags% = FNquit 
+2960 WHEN "upleft" flags% = FNupleft 
+2970 WHEN "up" flags% = FNup 
+2980 WHEN "upright" flags% = FNupright 
+2990 WHEN "rotright"™ flags% = FNrotright 
+3000 WHEN "left" flags% = FNleft 
+3010 WHEN "help" flags% = FNhelp 
+3020 WHEN "right" flags% = FNright 
+3030 WHEN "degree" flags% = FNdegree 
+3040 WHEN "downleft"” flags% = FNdownleft 
+3050 WHEN "down" flags% = FNdown 
+3060 WHEN "downright" flags% = FNdownright 
+3070 WHEN "rotleft"™ flags% = FNrotleft 
+3080 WHEN "view" flags% = FNview 
+3090 WHEN "zoomin" flags% = FNzoomin 
+3100 WHEN "magnify" flags% = FNmagnify 
+3110 WHEN "zoomout" flags% = FNzoomout 
+3120 WHEN "next" flags% = FNnext 
+3130 WHEN "sleft™ flags% = FNsleft 
+3140 WHEN "sright" flags% = FNsright 
+3150 WHEN "prev" flags% = FNprev 
+3160 ENDCASE 
+3170 IF flags3® > 0 THEN PROCsho(swt _no%, wlx%,wby%,wrx%,wtys%, flags%) 
+3180 ENDIF 
+3190 ELSE 
+3200 IF FNinwindow (mx%, my%) THEN 
+3210 PROChelp(" Display window", 12, 13) 
+3220 PROCmous(4e) 
+3230 PROCs(sht _onow%, wlx%,wby%,wrx%,wty%, pbit%) 
+3240 ELSE 
+3250 IF FNonscale (mx%, my%) AND mb% > 0 THEN 
+3260 PROCscale 
+3270 ELSE 
+
+3280 PROChelp(" Information area", 12, 13) 
+3290 ENDIF 
+3300 ENDIF 
+3310 ENDIF 
+3320UNTIL quit? 
+3330ENDPROC 
+3340 
+3350DEF FNinwind(ox%w, y%) 
+3360= x3¥>v1x3 AND x%<vrx3% AND y3>vby% AND y3<vty$ 
+3370 
+3380DEF FNonicons (x%, ys) 
+3390= x%>1ix% AND x3%<(ix%+4*iw%) AND y%>(iy%-((icons%+1)DI*Vih4%))  AND y%<ivy% 
+3400 
+3410DEF FNonscale (x%, ys) 
+3420= x%>1ix% AND x%<(ix%+4*iw%) AND y%>ih% AND y%<ih%*2 
+3430 
+3440DEF FNiconnumb(ex%r, vy%) 
+3450= ((iy%-y%) DIV 1ih%)*4 + (x%-1x%) DIV iw$% 
+3460 
+3470DEF PROChelp (help$, fc%, bc%) 
+3480IF help on% THEN 
+3490 IF help$ <> oldhelp$ THEN 
+3500 oldhelp$ = help$ 
+3510 PROCiconp(o45s, 13, tl%, t2%) 
+3520 PROCupdate (t1%-8, t2%, helpS, 19, fc%, bc)
+3530 ENDIF 
+3540ENDIF 
+3550ENDPROC 
+
+
+
+3560 
+3570DEF PROCscale 
+3580PROCiconp(o43s, 9, tl%, t2%) 
+35900S_Scale% = VAL(FNginput (t1%, t2%, STRS$(0S_Scale%), 6, 7, 0)) 
+3600PROCiconp(o41s, 13, tl%, t2%) 
+3610PROCupd(att1%e, t2%, "OS Scale 1:"+STR$(OS Scale%), 18, 12, 13) 
+3620ENDPROC 
+
+3630 
+3640DEF FNnew 
+3650filename$ = FNginput (m1x%+96, 1023-16, filename$, 10, 7, 0) 
+3660PROCcleardisplay 
+3670PROCreadsurvey(filepath$, filename$) 
+3680VDU 26 
+3690= s bit% OR i bit% OR p bit% 
+3700 
+3710DEF FNload 
+3720PROCinitsurvey 
+3730filename$ = FNginput (ml1x%+96, 1023-16, filename$, 10, 7, 0) 
+3740survey% = FNloadsurvey(filepath$, filename$) 
+3750IF survey% THEN PROCinitinfo (TRUE) 
+3760= s _bit% OR i bit% 
+3770 
+3780DEF FNsave 
+
+3790IF survey3 THEN 
+3800 filename$ = FNginput (ml1x%+96, 1023-16, filename$, 10, 7, 0) 
+3810 t1l% = FNsavesurvey(filepath$, filename$) 
+3820 = 1 bit% 
+3830ELSE 
+3840 = 0 
+3850ENDIF 
+3860 
+3870DEF FNmerge 
+3880IF survey$ THEN 
+3890 filename$ = FNginput (ml1x%+96, 1023-16, filename$, 10, 7, 0) 
+3900 IF FNmergesurvey(filepath$, filename$) THEN PROCinitinfo (FALSE) 
+3910 = s_bit% OR i bit% OR p bit$ 
+3920ELSE 
+3930 = 0 
+3940ENDIF 
+
+3950 
+3960DEF FNview 
+3970REM MOVE 0,0 
+
+3971REM MOVE 1279, 1023 
+
+3980REM *SGet CaveScreen 
+3990REM OSCLI("SSave <Survey$Dir>.Screen") 
+4000view% = Plan 
+4010= s_bit% 
+4020 
+4030DEF FNnorth 
+4040PROCmous(2e) 
+4050PROCmous(1e) 
+4060info%!'x north% mx%3[0]  
+4070info%'!y north% mys 
+4080= s _bit% 
+4090 
+4100DEF FNhelp 
+4110PROChelp("", 12, 13) 
+4120help on% = NOT help on% 
+4130= 1 _bit% 
+4140 
+4150DEF FNcommand 
+41 60PROCcleardisplay 
+4170REPEAT 
+4180 PRINT "*"; 
+
+4190 $buf$ = FNinput (POS, VPOS, "", 255, 12, 7) 
+4200 SYS "XOS_ CLI", buf$% TO eptr$,;eflgs? 
+4210 IF FNtbit (eflgs%, %0001) THEN 
+4220 tls = 4 
+4230 WHILE eptr3?2tls <> 0 
+4240 VDU eptr%?tl% 
+4250 tls += 1
+
+
+
+4260 ENDWHILE 
+42°70 PRINT 
+
+4280 ENDIF 
+
+4290UNTIL Sbufs = "" 
+
+4300VDU 26 
+4310PROCcleardisplay 
+4320= s_bit% 
+4330 
+4340DEF FNgrid 
+4350grid% = NOT grid$% 
+4360= s _bit% 
+4370 
+4380DEF FNpaper 
+4390IF survey? THEN 
+4400 papersize% = (papersize%+l) MOD 6 
+4410 = i bit% 
+4420ELSE 
+4430 = 0 
+4440ENDIF 
+4450 
+4460DEF FNprint 
+4470IF surveys THEN 
+4480 PROCcleardisplay 
+4490 PRINT TAB(20, 8);"Are you sure (Y/N)?2" 
+4500 a$ = FNinput (40, 8, "yy", 1, 7, 0) 
+4510 COLOUR 12 
+4520 COLOUR 128+7 
+4530 CLS 
+4540 VDU 26 
+4550 IF a$ = "Y" OR a$ = "y" THEN 
+4560 PROChelp (" Printing”, 11, 13) 
+4570 OS 1x% = info%'x min% 
+4580 OS_by% = info%!y min% 
+4590 wxlim% = OS_Scale%*factor% 
+4600 wylim% = OS_Scale%*factor? 
+4610 OS_ScreenX = 7087 
+4620 OS_ScreenY = 7087 
+4630 REM Convert survey width to screen and then to inches 
+4640 t1l% = FNwtovx(info3%ma'x!%x) 
+4650 orgx% = ((p1%_) *r180/3720¥00--t1%p)/2 
+4660 IF orgx% < 0 THEN orgx% = 0 
+4670 REM Same for height of survey 
+4680 t1l% = FNwtovy(infom%a!x%y) 
+4690 orgy%s = ((p_t%-p b%-3*72000) *180/72000-t1%) /2 
+4700 IF orgy% < 0 THEN orgy% = 0 
+4710 PROCprintpic (printfile$) 
+4720 PROChelp("", 12, 13) 
+4730 orgx3s = 0 
+4740 orgys = 0 
+4750 ENDIF 
+4760 = s _bit% OR i bit% 
+4770ELSE 
+4780 = 0 
+4790ENDIF 
+4800 
+4810DEF FNquit 
+4820PROCcleardisplay 
+4830PRINT TAB (20, 8) ;"Are you sure (Y/N)?2" 
+
+- 4840a$ = FNinput (40, 8, "y", 1, 7, 0) 
+4850COLOUR 12 
+4860COLOUR 128+7 
+4870CLS 
+4880VDU 26 
+4890IF a$ = "Y" OR a$ = "y" THEN 
+4900 quit$% = TRUE 
+4910 = 0 
+4920ELSE 
+4930 = s bit% OR i_bit$ 
+49340ENDIF 
+4950 
+4960DEF FNupleft
+
+
+
+4970= FNup OR FNleft 
+4980 
+4990DEF FNupright 
+5000= FNup OR FNright 
+5010 
+5020DEF FNdownleft 
+5030= FNdown OR FNleft 
+5040 
+5050DEF FNdownright 
+5060= FNdown OR FNright 
+5070 
+5080DEF FNleft 
+
+5090wlx% -= wxi% 
+5100wrx% -= wxi1i% 
+5110= s_bit% 
+5120 
+5130DEF FNright 
+5140wlx% += wxi% 
+5150wrx% += wxi% 
+5160= s _bit% 
+5170 
+5180DEF FNup 
+5190wby% += wyi% 
+5200wty% += wyi$% 
+5210= s _bit% 
+5220 
+5230DEF FNdown 
+5240wby% -= wyi% 
+5250wty% -= wyi% 
+5260= s_bit% 
+5270 
+5280DEF FNrotright 
+5290IF surveys THEN 
+5300 info%!su rot% -=1 
+5310 IF (info%!su rot%) < 0 THEN info%!su rot% = 359 
+5320 = s _bit% OR 1_bit% 
+5330ELSE 
+5340 = 0 
+5350ENDIF 
+5360 
+5370DEF FNdegree 
+5380PROCiconxy ("degree™, 3, tl%, t2%) 
+5390t1% = VAL(FNginput (t1l%, t2%, STRS$(info%!su rot%), 3, 7, 0)) 
+5400WHILE tl1l% < 0 
+
+5410 tls += 360 
+5420ENDWHILE 
+5430t1l% = t1% MOD 360 
+5440info%!rostu% = tl% 
+5450= s_bit% OR i _bit% 
+5460 
+5470DEF FNrotleft 
+5480IF survey% THEN 
+5490 info%!su rot% = ((info%!su rot%)+1l) MOD 360 
+5500 = Ssbit% OR i bit% 
+5510ELSE 
+5520 = 0 
+5530ENDIF 
+
+5540 
+5550DEF FNzoomout 
+S560IF wlx%+2*wxi% < wrx% AND wby%+2*wyi% < wty% THEN 
+5570 wlx% += wxi$ 
+5580 Wrx3s —-= wxi% 
+5590 wby% += wyi$% 
+5600 wtys -= wyi% 
+5610 wxi% = (wrx%-wlx%)/32 
+5620 wyi% = (wty$%-wby%)/32 
+5630 info%!su mag% = 100* (info%!x max%-info%!x mi/ (nwrx%-wl)x%) 
+5640ENDIF iB BN 
+5650= s bit% OR i _bit% 
+5660 
+5670DEF FNdatal
+
+
+
+5680IF survey% THEN 
+5690 PROCcleardisplay 
+5700 PRINT TAB (20, 8):;"Are you sure (Y/N)?2" 
+5710 a$ = FNinput (40, 8, "y", 1, 7, 0) 
+5720 COLOUR 12 
+5730 COLOUR 128+7 
+5740 CLS 
+5750 VDU 26 
+5760 IF a$ = "Y" OR a$ = "y" THEN 
+5770 PROChelp (" Printing”, 13) 
+5780 PROCcleardisplay 
+5790 VDU 2 
+5800 PROCbo1ld (TRUE) 
+5810 PRINT TAB(20);" Title ";$(info%+surveysized+titled) 
+5820 PRINT TAB (20) ; "Surveyed by ";$(info%+surveysize$+people%) 
+5830 PRINT TAB(20);" Date ";S$S(info%+surveysize%+dated) 
+5840 t1l% = FNgetsinf(0o, s_x%) 
+5850 t2% = FNgetsinf(0o, s_y%) 
+5860 $Sbuf% = FNprintf (FNos(tl1%),5,3)+" "+FNprintf (FNos(t2%),5,3) 
+5870 PRINT TAB (20) ; "Entrance at ";$buf3; 
+5880 PRINT ;" Alt. ";STRS (INT (FNgetsinfo(0, s_z%)));"m"'"' 
+5890 PRINT TAB (3) ;"Station";TAB(15);"N";TAB(25);"E";TA;B"(Al3t5")’ 
+5900 FOR s% = 0 TO info%!su sta%-1 
+5910 PROCbold (TRUE) 
+5920 smem% = stations%+s%*stationsize%$ 
+5930 PRINT TAB(S) ;$ (smem%+s_name%); 
+5940 PROCbold (FALSE) 
+
+5950 PRINT TAB (15) ;FNos (FNgetsinfo(s%, s_x%))-tl%; 
+5960 PRINT TAB (25) ;FNos (FNgetsinfo(s%, s_y%))-t2%; 
+5970 PRINT TAB (35); INT (FNgetsinfo(s%, s_z%)) 
+5980 NEXT 
+
+5990 PROCe ject 
+6000 VvDU 3 
+6010 VDU 26 
+6020 PROChelp("", 12, 13) 
+6030 ENDIF 
+6040 = s_bit% 
+6050ELSE 
+6060 = 0 
+6070ENDIF 
+
+6080 
+6090DEF FNmagnify 
+6100IF survey% THEN 
+6110 PROCiconxy ("magnify"”, 4, tl%, t2%) 
+6120 tl% = VAL(FNginput (tl1l%, t2%, STRS(info%!'su mag%), 4, 7, 0)) 
+©6130 IF t1% > 0 THEN 
+
+6140 PROCinitinfo (FALSE) 
+
+6150 info%!su mag% = tl% 
+6160 t2% = wrx% - wlx$% 
+6170 adj% = (t2% - 100*t2%/tl1%)/2 
+6180 wlx% += adj% 
+6190 wrxs -= adj% 
+6200 t2% = wty% - wby% 
+6210 adj% = (t2% - 100*t2%/tl1l%)/2 
+6220 wby% += adij% 
+6230 wty% -= adj% 
+6240 ENDIF 
+
+6250 = s_bit% OR i_bit% OR p bit% 
+6260ELSE 
+6270 = 0 
+6280ENDIF 
+
+6290 
+6300DEF FNzoomin 
+6310wlx% -= wxi$% 
+6320wrx% += wxi% 
+6330wby% -= wyi% 
+6340wty? += wyi$% 
+6350wxi% = (Wwrx%-wlx$)/32 
+6360wyi% = (wty%-wby%)/32 
+6370info%!su_mag% = 100* (info%'!xmax%-iminn%)f/ o(Wr%x%-!wlx%) 
+6380= s_bit% OR i bit%
+
+
+
+6390 
+6400DEF FNswap 
+6410IF surveys THEN 
+6420 su no% += 1 
+6430 IF su no% > (info%!survneo%y)  THEN su no% = 1 
+6440 st _no% = 
+6450 st_base% info%! (su_no%*surveysize%+start_stas%) 
+6460 st _nameS$ $ (stations%+_(no%s) t*st_atbioanssize%+%s_+nasmet3) 
+6470 = s_bit% OR i bit$ 
+6480ELSE 
+
+6490 = 0 
+6500ENDIF 
+6510 
+6520DEF FNnext 
+6530IF survey3 THEN 
+6540 st no% += 1 
+6550 IF st _no% = info%! (suno%*surveysize%+stat_ino%n)  THEN st _no% = 0 
+6560 st name$ = $(stations%+_(no%s) *tst_atbioanssize%+%s_+nasmet%) 
+6570 = s _bit% OR i_bit% 
+6580ELSE 
+6590 = 0 
+6600ENDIF 
+
+6610 
+6620DEF FNsleft 
+6630= FNstation 
+6640 
+6650DEF FNsright 
+6660= FNstation 
+6670 
+6680DEF FNstation 
+6690IF survey THEN 
+6700 PROCiconxy ("sleft"™, 1, tl%, t2%) 
+6710 $buf% = FNginput (tl%, t2%, st name$, 7, 7, 0) 
+6720 IF FNexists(Sbuf%, tl1l%) THEN | 
+6730 st _no% = tl% 
+6740 st_name$ = Sbuf% 
+6750 t2% = 0 
+6760 su no% = 1 
+6770 WHILE t2% < tl1% 
+6780 t2% += info%! (su_no%*surveysize%+station_no%) 
+6790 su no% += 1 
+6800 ENDWHILE 
+6810 su no% -=1 
+6820 st_base% = info%! (su _no%*surveysize%+stsatar%t) 
+6830 st_no% -= st _base% 
+6840 ENDIF 
+6850 = s bit% OR 1 _bit% 
+68 60ELSE 
+6870 = { 
+6880ENDIF 
+6890 
+6900DEF FNprev 
+6910IF survey% THEN 
+6920 st no% -=1 
+6930 IF st_no% < 0 THEN st no% = (info%! (su_no%*surveysize%+stnaot%)i)o-n1 
+6940 st_name$ = $(stations%+n(o%s) *tst_atbioanssize%+%s +nasmet?) 
+6950 = s_bit% OR i _bit% 
+6960ELSE 
+6970 = 0 
+6980ENDIF 
+6990 
+7000DEF FNblank 
+7010= 0 
+7020 
+7030DEF PROCshow(nso%t, wlx%, wby%, wrx%, wty%, flags$) 
+7040REM f3% are the redraw flags 
+7050REM b0 - everything 
+7060REM bl - redraw survey 
+7070REM b2 - rewrite station info 
+7080REM b3 - rewrite position info 
+7090wx1lim% = wrx3-wlx$%
+
+ho 
+
+
+
+7100wylim% = wty3-wby% 
+71100S_ScreenX = vrx3-v1x% 
+71200S_ScreenY = vty%-vby% 
+713008 1x% = wlx% 
+71400S_by% = wby% 
+7150IF FNtbit (flags%, e_bit% OR s_bit%) THEN 
+7160 bank% = bank% EOR 3 
+7170 SYS "OS_Byte", 112, bank% 
+7180ENDIF 
+
+7190IF FNtbit (flags%, e_bit%) THEN 
+7200 PROCarea (v1x%, vby3%, vrx3, vty, 7, 15) 
+7210 PROCarea (mlx%, mby%, mrx3, mty3, 13, 15) 
+7220 PROCarea (vlx%, vty%, mrx%, 1023, 8, 15) 
+7230 PROCicons 
+7240 GCOL 15 
+7250 RECTANGLE 0, 0, 1279, 1023 
+7260 RECTANGLE vlx%, vty%, 34*16, 1023-vty% 
+7270 RECTANGLE v1x%+34*16, vty%, 9*16, 1023-vty3 
+7280 RECTANGLE v1x%+43*16, vty%, 9*16, 1023-vty% 
+7290 RECTANGLE mlx%+iw3%, mty%, 3*iw3, 1023-mty3 
+7300ENDIF 
+7310IF FNtbit (flags%, s bit%) AND survey% THEN 
+7320 PROCsetblock (blk%, v1x%+2, vby%+4, vrx%-2, vty%-4) 
+7330 PROCshowsurvey (blk%, FALSE) 
+7340 tl% = st_base%+nsot% 
+7350 LINE pt%(tl1%,0)-32, pt%(tl%,1), pt3(tl%,0)+32, pt3(tl%,1) 
+7360 LINE pt3(tl1%,0), pt%(tl%,1)-32, pt3(tl%,0), pts (tl%,+13)2 
+7370 CIRCLE pt%(tl%,0), pt%(tl%,1), 24 
+7380 VDU 26 
+7390ENDIF 
+7400IF FNtbit (flags%, i _bit%) AND survey? THEN 
+7410 smem% = info%+su no%*surveysize$ 
+7420 PROCupdate (vl1x%+1l6, vty%+48, $(smem%+title%), 33, 12, 8) 
+7430 $buf% =STRS$ (INT ( (smem%!lesn%)u/rfavctoer%y)) + "m" 
+7440 PROCupdate (v1x%+16+34*16, vty3+48, S$bufs, 7, 12, 8) 
+7450 $buf% = STR$ (INT ((info%!total len%)/factor%)) + "m" 
+7460 PROCupdate (v1x%+16+43*16, vty%+48, Sbuf%, 7, 12, 8) 
+7470 PROCiconxy ("paper"”, 2, tl%, t2%) 
+7480 PROCupdate (t1%, t2%, "A"+STRS$papersize%, 2, 7, 0) 
+7490 PROCiconxy ("degree”, 3, tl%, t2%) 
+7500 PROCupdate (t1%, t2%, FNprintf (info%!su rot%,3,0), 3, 12, 13) 
+7510 PROCiconxy ("magnify", 4, tl%, t2%) 
+7520 PROCupdate (t1%, t2%, FNprintf(info%!su mag%,4,0), 4, 12, 13) 
+7530 smem% = stations%+(stn_o%b) a*sstaeti%on+sisze$t% 
+7540 t1% = FNgetsinfo(st_base%, s_x%)-(smem%!s x%)/factor$% 
+7550 t2% = FNgetsinfo(st base%, s_y%)-(smem%'!s y%)/factor$% 
+7560 Sbuf% = "N "+STRS(t1l%)+"™ E "+STRS (t2%) 
+7570 PROCupdate (v1x%+16+52*16, vty%+48, Sbuf%, 10, 12, 8) 
+7580 PROCiconxy ("sleft", 1, tl%, t2%) 
+7590 PROCupdate (t1%, t2%, st _name$, 7, 12, 13) 
+7600 PROCupdate (m1lx%+96, 1023-16, filename$, 10, 12, 8) 
+7610 tl? = (smem%!s_x%)/factor$% 
+7620 t2% = (smem%!s_y%)/factor$ 
+7630 PROCosr(e3f3, tl1l%, t2%, "Station ") 
+7640 PROCiconp(o41s, 13, tl%, t2%) 
+7650 PROCupdate (t1%, t2%, "OS Scale 1:"+STR$(0OS_Scale%), 18, 12, 13) 
+7660ENDIF 
+7670IF FNtbit (flags%, pbit%) AND survey? THEN PROCmousep(mox%s, my%) 
+7680IF FNtbit (flags%, e _bit% OR s_bit%) THEN 
+7690 SYS "OS Byte", 113, bank$ 
+7700 WAIT 
+7710ENDIF 
+7720ENDPROC 
+7730 
+7740DEF PROCcleardisplay 
+7750GCOL 12 
+7760GCOL 128+7 
+7770VDU 24, v1x3%+2; vby3+4; vrx%-2; vty3-4; 
+7780CLG 
+7790COLOUR 12 
+7800COLOUR 128+7
+
+
+
+7810VDU 28, v1x%DIV16+1l, (1023-vby%)DIV32-1, vrx3DIV16-1, (1023-vty%)DIV3Z2+1 
+7820CLS 
+78 30ENDPROC 
+
+7840 
+7850DEF PROCosref (i%, x%, v3, 18) 
+786 0PROCiconp(oi%s, 13, tl%, t2%) 
+78708buf% = FNprintf (FNos(x%),5,3)+" "+FNprintf (FNos(y%),5,3) 
+7880PROCupdate (t1%-8, t2%, i$+Sbuf%, 19, 12, 13) 
+78 90ENDPROC 
+7900 
+7910DEF FNos (0%) 
+7920REM Make 0% into a 100km map reference 
+7930IF o% >= 100000 THEN 0% = 0% MOD 100000 
+7940WHILE 0% < 0 
+
+7950 0% += 100000 
+T7T960ENDWHILE 
+
+7970= 0% 
+7980 
+7990DEF PROCnorth 
+
+8000LOCAL x3, y3%, Ss, C 
+8010s = sin(info%!su rot%) 
+8020c = cos (info%!su rot%) 
+8030x% = info%!x north%+orgx3 
+8040y% = info%'!y north%+orgy% 
+8050FOR i% = 1 TO Npts$ 
+8060 t1% north%(i%0,) 
+8070 t2% = north%(1%,1) 
+8080 MOVE x%+tl1l%*c-t2%*s, y%+tl%*s+t2%3*c 
+8090 t1l% = north%(i%,2) 
+8100 t2% = north%(i%3,) 
+8110 DRAW x3+t1%*c-t2%*s, y3+tl%*s+t2%*c 
+8120NEXT 
+8 130ENDPROC 
+8140 
+8150DEF PROCicons 
+8160LOCAL ipx%, ipy% 
+8170ipx% = 1ix% 
+8180ipy% = iy%-ih% 
+8190FOR i% = 0 TO icons% 
+8200 PROCicon (icon$(i%, 0), ipx%, ipy%) 
+8210 ipx% += iw% 
+8220 IF ipx% > mrx%-iw$% THEN 
+8230 ipx% = ix% 
+8240 ipy% == ih% 
+8250 ENDIF 
+8260NEXT 
+8270ipx% = 1ix% 
+8280PROCicon ("infobox", ipx%, ipy$%) 
+8290ipy% -= 1ih% 
+8300PROCicon ("infobox", ipx%, ipy%) 
+8310ipy% -= ih% 
+8320PROCicon ("infobox", ipx%, ipy%) 
+8330ipy% -= ih% 
+8340PROCicon ("infobox", ipx%, ipy%) 
+8350ENDPROC 
+
+8360 
+8370DEF PROCicon (name$, x%, v%) 
+8380MOVE x%, y3% 
+8390Sbuf% = name$ 
+8400SYS "Wimp SpriteOp", 512+24,, buf% TO ,, tl% 
+8410SYS "Wimp SpriteOp"™, 512+28,,tl% 
+8420ENDPROC 
+
+8430 
+8440DEF PROCiconxy (icon§$, fws, RETURN x%, RETURN y%) 
+
+8450LOCAL 1% 
+
+8460i% = 0 
+8470WHILE icon$ <> icon$(i%, 0) 
+8480 is += 1 
+8490ENDWHILE 
+
+8500PROCiconp(oi%s, fw3, x%, v%) 
+851 0ENDPROC
+
+
+
+8520 
+8530DEF PROCiconpos(i%, fw%, RETURN x%, RETURN y%) 
+
+8540x% = 1ix% + (1% MOD 4) *iw$% + (1iw% DIV 2) - (fw%*1l6 DIV 2) 
+8550y% = iy% - (i% DIV 4) *ih% - (ih% DIV 2) + 12 
+8 56 0ENDPROC 
+8570 
+8580DEF PROCshowsurvey(blk%, print%) 
+8590VDU 24, blk%!'0; blk3'!4; blk%!8; blk3!12; 
+8600IF print% THEN 
+8610 GCOL 7 
+8620 GCOL 128+0 
+8630ELSE 
+8640 GCOL 13 
+8650 GCOL 128+7 
+8660 CLG 
+86 70ENDIF 
+
+86800ltdo = -1 
+86900ldb = 0 
+870001ldw = 0 
+8710tx% = FNvtowx((vrx%+vlx%) DIV 2) 
+8720ty% = FNvtowy((vty%+vby%) DIV 2) 
+8730FOR s% = 1 TO (info%!survnoe%y) 
+8740 nv% = info%! (s%¥*surveysize%+vecntoo%r) 
+8750 Dbv% = info%! (s%$*surveysize¥+stveacr?t) 
+8760 Dbs% = info%! (s$*surveysize¥+ststaar¥%t) 
+8770 FOR v% = 0 TO nv3%-1 
+8780 vmem?¥ = vectors%+(bv%+vs%) *vectorsizes 
+8790 from%¥ = bs%+(vmem%'!v_from%) /factor$ 
+8800 to% = bs%+(vmem?!v_to%)/factor? 
+8810 smem% = stations3+from%*stationsize% 
+8820 b = (vmem%!v_bearing%)/factor% 
+8830 IF v3 = 0 THEN 
+8840 REM calc with leg bearing and width of from station only 
+8850 PROCcalc(from%, smem%, Db) 
+8860 ELSE 
+8870 IF from% = old to THEN 
+8880 REM continuing passage 
+8890 REM calc with average of previous and this leg bearing 
+8900 REM & width of from station only 
+8910 PROCcalc (from%, smem%, FNav(b, old b)) 
+8920 ELSE 
+8930 REM terminate old bit of survey 
+8940 REM calc with bearing and to station width 
+8950 PROCc(oaldltco, stations%+old to*stationsize%, old b) 
+8960 ENDIF 
+8970 ENDIF 
+8980 old to = to% 
+8990 cold b=Db 
+9000 oldw = w 
+9010 NEXT 
+9020 REM finish last bit 
+9030 PROCc(oaldltco, stations%+old to*stationsize%, old Db) 
+9040NEXT 
+9050FOR s% 1 TO (info%!survnoe%y) 
+9060 nv info%! (s%¥*surveysize%¥+vecntoo%r) 
+9070 bv% = info%! (s%*surveysize%+stvaecr?t) 
+9080 bs% = info%! (s%*surveysize%+ststaar%t) 
+9090 IF NOT print$% THEN 
+9100 IF s% = su no% THEN 
+9110 GCOL 10 
+9120 ELSE 
+9130 GCOL 12 
+9140 ENDIF 
+9150 ENDIF 
+9160 FOR v% = 0 TO nv3-1 
+9170 vmem% = vect(bov%+rv$)s*$vec%tor$siz+e$ 
+9180 from% = bs%+(vmem%!v_from%)/factor% 
+9190 to% = bs%+(vmem%!v _to%)/factor$ 
+9200 MOVE pt3 (from%, 0) -pt%(from%, 2) torgx%,pt% (from%, 1) -pt% (from%, 3) +orgy% 
+9210 DRAW pt3(to%, 0)-pt3(to%,2)+torgx3s, pt3(to3,1l)-pt3(to%,3)+torgys 
+9220 PLOT85,pt% (from%, 0) +pt3 (from%, 2) torgx%,pt% (from%, 1) +pt% (from%, 3) +torgys
+
+
+
+9230 PLOT 85, pt%(to%,0)+pt (to%,2)+orgx%, pt%(to%, 1)+pt%(to%, 3)+orgys 
+9240 NEXT 
+92 50NEXT 
+9260IF print$% THEN 
+9270 t3% = 0 
+9280 PROCouts (300, 1620, " Title : "+$(info%+surveysize3+titled)) 
+9290 PROCouts (300, 1580, "Surveyed by : "+$(info%+surveysize%+people%)) 
+9300 PROCouts (300, 1540, " Date : "+$(info%+surveysize3+date¥%)) 
+9310 tl1l% = FNgetsinfo(0, s_x%) 
+9320 t2% = FNgetsinf(0o, s_y%) 
+9330 $buf%$ = FNprintf (FNos(tl1%),5,3)+" "+FNp(FNrosi(t2n%)t,5,f3) 
+9340 $Sbuf% += " Alt. "+STRS (INT (FNgetsinf(0o,  s_z%)))+"m" 
+9350 PROCouts (300, 1500, "Entrance at : "+$buf?3) 
+9360 t1% = (info%!total len%)/factor% 
+9370 PROCouts (300, 1460, " Length : "+STRS(t1l%)+"m") 
+9380 PROCouts (300, 1420, " Scale : 1:"+STRS (OS_Scale%)) 
+9390 RECTANGLE 260, 1348, t3%*16+5*16, 320 
+9400ENDIF 
+9410IF NOT print3% THEN GCOL 9 
+9420PROCnorth 
+943 0ENDPROC 
+9440 
+9450DEF PROCouts (x%, y3%, s%) 
+9460IF LEN(s$) > t3% THEN t3% = LEN(sS$) 
+9470MOVE x3, Vy5% 
+9480PRINT sS$ 
+9490ENDPROC 
+9500 
+9510DEF PROCcalc(s%, smem%, Db) 
+9520t1l% = (smem%!s_ x%)-tx% 
+9530t2% (smem%!s_y-t%y)% 
+9540pt%(s%, 0) = FNwtovx(tl%*cos(info%!su rot%)-t2%*sin(info%!su_rot%) +tx%) 
+9550pt% (8%, 1) FNwtovy (t1%*sriot%n) +(t2%i*cons(ifnfoo%!s%u r!ot%s) +tuy%) 
+9560w = (smem%'!s w%)*959/wxlim% 
+9570pt%(s%, 2) = w*SIN(RAD(b-90-infrot%%!))s/u2 
+9580pt% (s%, 3) w*COS (RAD (b-90-inforo%t%!)s)/u2 
+9590ENDPROC 
+9600 
+9610DEF FNav (bl, b2) 
+9620LOCAL av 
+9630IF bl > 180 THEN bl -= 360 
+9640IF b2 > 180 THEN b2 -= 360 
+9650av = (bl+b2)/2 
+9660IF av >= 360 THEN av -= 360 
+9670= av 
+9680 
+9690DEF FNloadsurvey(path$, nameS$) 
+9700IF FNfile(&ff, pathS$+name$+".Coords"™, stations%, 0,0,0) THEN 
+9710 IF FNfile(&ff, pathS$+name$+".Vectors", vectors%, 0,0,0) THEN 
+9720 = FNfile(&ff, pathS$S+name$+".Info", info%, 0,0,0) 
+9730 ENDIF 
+
+9740ENDIF 
+
+9750PROCerror (eptr%) 
+9760= FALSE 
+
+9770 
+9780DEF FNsavesurvey (path$, nameS$) 
+9790IF FNfile (&00, path$+name$+".Coords", 0,0, stations%, stations%+stationsize%*(info%!su 
+_sta%)) THEN 
+9800 IF FNfile (&00, path$+name$+".Vectors", 0,0, vectors%, vectors%+vectorsize%*(info%'!s 
+luvec%)) THEN 
+9810 = FNfile(&00, path$+name$+".Info", 0,0, info%, info%t+surveysize%* (info%!survey n 
+|o%+1)) 
+9820 ENDIF 
+9830ENDIF 
+9840PROCerror (eptr?) 
+9850= FALSE 
+3860 
+9870DEF FNmergesurvey (path$, name$) 
+9880LOCAL pos%, 1lim%, ns%, ts%, tv 
+9890pos% (infstao%) *%sta!tiosnsiuze% 
+99001im% = maxstations%*stationsize%
+
+
+
+9910IF FNfload(path$+name$+".Coords", stations%, pos%, 1lim%) THEN 
+9920 pos% = (infveco%) %*ve!ctosrsiuze% 
+9930 lim% = maxvectors%*vectorsize$ 
+9940 IF FNfload(pathS$+name$+".Vectors"™, vectors%, pos%, lim%) THEN 
+9950 t1l% = OPENIN(path$+name$+".Info") 
+9960 IF t1% THEN 
+9970 ns = FNgetw(tl5%) 
+9980 IF ns%+(info%!survnoe%y) < maxsurveys% THEN 
+9990 t2% = FNgetw(tl%) : t2% = FNgetw(tl%) 
+
+10000 t2% = FNgetw(tl%) : t2% = FNgetw(tl%) 
+10010 ts% = FNgetw(tl%) 
+10020 tvs = FNgetw(tl%) 
+10030 t2% = FNgetw(tl%): IF t2%<info%mi!nx% THEN info%!x min% = t2% 
+10040 t2% = FNgetw(tl%): IF t2%<info%'m!i'ny% THEN info%!y min% = t2% 
+10050 t2% = FNgetw(tl%®): IF t2%<info%'m!i'nz% THEN info%!z min% = t2% 
+10060 t2% = FNgetw(tl%): IF t2%>info%m!axx% THEN info%!x max% = t2% 
+10070 t2% = FNgetw(tl%): IF t2%>info%!y max% THEN info%!y max% = t2% 
+10080 t2% = FNgetw(tl%): IF t2%>info%ma!xz% THEN info%!z max% = t2% 
+10090 info%!totleanl% += FNgetw(tl%) 
+10100 PROCgets (t1%, info%+total len%+4, survey(tsotialzlen%%+4-)) 
+10110 FOR s% = 1 TO ns% 
+10120 smem?¥ = info%+(infnoo%%+s!%)s*suurrvevyseizye% 
+10130 smem% !station no% = FNgetw(tl%) 
+10140 sm! evectmor %no% = FNgetw(tl%) 
+10150 sm! setarmt _s$ta% = FNgetw(tl%) + info%!su_sta% 
+10160 sm! estarmt _v3ec% = FNgetw(tl%) + info%!su_vec?$ 
+10170 sm! seurvmey lsen% = FNgetw(tl%) 
+10180 PROCgets (t1l%, smem3+title%, 50) 
+10190 PROCgets (t1l%, smem3+people3, 50) 
+10200 PROCgets (t1l%, smem3+date%, 50) 
+10210 NEXT 
+10220 info%!su_sta% += ts% 
+10230 info%!su vec% += tv$% 
+10240 info%!survneoy% += ns% 
+10250 CLOSE#t1% 
+10260 = TRUE 
+10270 ELSE 
+10280 CLOSE#t1% 
+10290 ENDIF 
+10300 ENDIF 
+10310 ENDIF 
+10320ENDIF 
+10330= FALSE 
+10340 
+10350DEF FNfile (fop%, S$buf%, £2%, £3%, f4%, £5%) 
+10360SYS "XOS File", fop%, buf%, £2%, £3%, £f4%, £5% TO eptr%;eflgs% 
+10370= NOT FNtbit (eflgs%, %0001) 
+10380 
+10390DEF FNfsize (fname$) 
+10400t1% = OPENIN (fname$) 
+10410IF t1% <> 0 THEN 
+
+10420 t2% = EXT#t1l% 
+10430 CLOSE#t1% 
+10440 = t2% 
+10450ELSE 
+10460 = 1lE6 :REM Large value prevents loading 
+10470ENDIF 
+10480 
+10490DEF FNfload (fname$, mem%, pos%, 1lim%) 
+10500IF FNfsize (fname$)+pos% < 1lim% THEN 
+10510 = FNfile(&ff, fname$, mem%+pos%, 0,0,0) 
+10520ELSE 
+10530 = FALSE 
+10540ENDIF 
+
+10550 
+10560DEF FNgetw (£f£%) 
+10570= (BGET#f3%) + (BGET#f% << 8) + (BGET#f% << 16) + (BGET#f% << 24) 
+10580 
+10590DEF PROCgets (f%, mem%, 1%) 
+10600LOCAL i% 
+10610FOR 1% = 0 TO 1%-1
+
+
+
+10620 mem%?21% BGET#£f% 
+10630NEXT 
+10640ENDPROC 
+
+10650 
+10660DEF PROCreadsurvey (path$, name$) 
+10670REM Reading a survey craps out any currently loaded surveys, SO beware 
+
+10680file$ = path$ + name$ + "." + name$ 
+10690PROCinitsurvey 
+10700COLOUR 12 
+10710COLOUR 135 
+10720ends = FALSE 
+10730error% = FALSE 
+10740PROCnewfile (file$) 
+10750WHILE NOT (error% OR end%) 
+10760 CASE FNreaditems OF 
+10770 WHEN "NOTES" PRINT FNnewline 
+10780 WHEN "TITLE" S$ (info%+surveysize%+title%) = LEFTS (FNnewline, 49) 
+10790 WHEN "PEOPLE" $(info%+surveysize$+people%) = LEFTS (FNnewline, 409) 
+10800 WHEN "DATE" S$ (info%+surveysize%+date%) = LEFTS (FNnewline, 49) 
+10810 WHEN "ORIGIN" : PROCorigin 
+10820 WHEN "MOLE" PROCmolephone 
+10830 WHEN "UNITS" PROCunits 
+10840 WHEN "STYLE" PROCstyle 
+10850 WHEN "GAUGE" PROCgauge 
+10860 WHEN "CHANGE" PROCchange 
+10870 WHEN "FORMAT" PROCformat 
+10880 WHEN "FILE" PROCnewfile (FNreaditem s) 
+10890 WHEN "END" PROCendfile 
+10900 WHEN "" PRINT FNnewline 
+10910 OTHERWISE PROCsurveyleg 
+10920 ENDCASE 
+10930ENDWHILE 
+10940PRINT 'info%!su sta%;" survey stations read" 
+10950IF SUM(handle%()) <> 0 THEN 
+10960 PROCreport (104) 
+10970 CLO SE#0 
+10980ENDIF 
+10990surveys = NOT error$% 
+11000IF survey% THEN PROCinitinfo (TRUE) 
+11010PROCcontinue 
+11020ENDPROC 
+11030 
+11040DEF PROCinitinfo (new) 
+11050wlx% = info%!x min% 
+11060wby% = info%!y min% 
+11070wrx% info%!x max% 
+11080wty% info%!y max% 
+11090adjs = ((Wrx3-wlx%3) -(wty%-wby%)) DIV 2 
+11100IF adj% > 0 THEN 
+11110 wby gE —-= adj% 
+11120 wty $ += adj% 
+11130ELSE 
+11140 wlx $ += adj% 
+11150 WIrX gS = adij% 
+11160ENDIF 
+
+11170wxi% = (Wwrx%s-wlx/%3)2 
+11180wyi% = (Wwty%S-wby/%3)2 
+11190IF new3 THEN 
+11200 info%!survey no% 1 
+11210 PROCtotal 
+11220 su no% = 1 
+11230  st_name$ = $S(stations%+s_name%) 
+11240ENDIF 
+11250ENDPROC 
+11260 
+11270DEF PROCorigin 
+11280REM Define new origin 
+11290PRINT FNnewline :REM print any comment 
+11300name$ = FNreaditems :REM origin name
+11310IF FNexists (name$, t1%) THEN 
+11320 PROCrepor(4t) 
+
+
+
+11330ELSE 
+11340 REM Read info about origin 
+11350 x = FNreadni(tUneitms) :REM read 10 figure map reference 
+11360 y = FNreadni(tUneitms) 
+11370 z = FNreadni(tUneitms) :REM height above sea level 
+11380 w = FNreadni(tUneitms) 
+11330 h = FNreadni(tUneitms) 
+11400 PROCaddstation(name$, x, y, z, w, h, or bit%) 
+11410 PRINT FNnewline 
+11420ENDIF 
+11430ENDPROC 
+11440 
+11450DEF PROCmolephone 
+11460PRINT FNnewline 
+11470name$ = FNreaditems :REM Mole Phone location 
+11480from$ = FNreaditems :REM Station where correction is to start 
+11490IF FNexists(name$, tl1l%) AND FNexists(from$, t2%) THEN 
+11500 IF old to$ = name$ THEN 
+11510 x = FNreadni(tUneitms) :REM read 10 figure map reference 
+11520 y = FNreadni(tUneitms) 
+11530 z = FNreadni(tUneitms) :REM height above sea level!, not depth 
+11540 tx = FNgetsinfo(tl%, s_x%) 
+11550 ty = FNgetsinfo(tl%, s_y%) 
+11560 tz = FNgetsinfo(tl%, s_z%) 
+11570 COLOUR 9 
+
+11580 PRINT"MOLE PHONE location for ";name$;" correction starts at ";from$ 
+11590 PRINT "Correction 1is:" 
+11600 PRINT " x : ", x-tx 
+11610 PRINT " y : "; y-ty 
+11620 PRINT " z : ", z-tz 
+11630 
+11640 lptrs = 0 
+11650 cur_sta% = tl 
+11660 vd = 0 
+11670 WHILE cur_sta%<>t2% AND (FNg(cuer sta%,ss filagns%)<f16)oAND v3<>-1 
+11680 slist%(1lptr%, 0) = cur sta% 
+11690 lptr? += 1 
+11700 cur_sta% = FNfrom(cur sta%, v%) 
+11710 ENDWHILE 
+11720 slist% (1lptr%, 0) = cur sta% 
+11730 
+11740 ex (x-tx) /1lptr? 
+11750 ey (y-ty) /1ptr$% 
+11760 ez (z-tz) /lptr$% 
+11770 
+11780 IF slist%(lptr%, 0) <> t2% THEN PROCreport (105) 
+11790 
+11800 COLOUR 9 
+11810 PRINT "Adjusting : "; 
+11820 FOR i% = lptr% TO 1 STEP -1 
+11830 t1l% = FNfindvector(slist%(i%,0), slist%(i%-1,0)) 
+11840 PROCgetvector(tl%, from%, to%, 1, b, i, dx, dy, dz) 
+11850 dx += ex 
+11860 dy += ey 
+11870 dz += ez 
+11880 1 = SQR(dx*dx + dy*dy + dz*dz) 
+11890 b FNbearing(l, dx, dy) 
+11900 i = FNbearing(l, dy, dz) 
+11910 PROCputvector(tl%, from%, to%, 1, b, i, dx, dy, dz) 
+11920 PROCgetstation(from%, x, vy, 2) 
+11930 PROCputstation(to%, x+dx, y+dy, z+dz) 
+11940 PROCputsinfo(to%, s_flags%, FNgetsinfo(to%, s flags%) OR vz bit%) 
+11950 PRINT S$ (stations%+to%*stationsniazme%)+;s" "; 
+11960 NEXT 
+11970 
+11980 lptrs = 0 
+11990 FOR 1% = 0 TO info%!su sta%-1 
+12000 J% = FNgetsinfo(i%, s_flags%) 
+12010 IF FNtbit (j%, vz_bit%) AND FNgetsinfo(i%, s fromcount%) > 1 THEN 
+12020 REM Add junction to list with successors 
+12030 vd = 0
+
+o\° 
+
+
+
+12040 REPEAT 
+12050 t1l% = FNfindto (i%, v%) 
+12060 IF tl1l% <> -1 AND (FNgetsinfo(tl%, s_flags%) < 64) THEN 
+12070 slist% (lptr%, 0) = 1% 
+12080 slist% (lptr%, 1) = tl% 
+12090 lptrs += 1 
+12100 ENDIF 
+12110 UNTIL t1% = -1 
+12120 ENDIF 
+12130 NEXT 
+12140 
+12150 bptrs = 0 
+12160 WHILE lptr% > bptr$ 
+12170 t1l% = FNfindvector(slist% (bptr%,0), slist%(bptr%,1)) 
+12180 vs = 0 
+12190 REPEAT 
+12200 PROCgetvector(tl%, from%, to%, 1, b, i, dx, dy, dz) 
+12210 t2% = FNtbit (FNgetsinfo(to%, s_flags%), vz _bit?%) 
+12220 IF NOT t2% THEN 
+12230 PROCgetstation(from%, x, y, 2z) 
+12240 PROCputstation(to%, x+dx, y+dy, z+dz) 
+12250 PROCputsinfo(to%,s flags%,FNgetsinfo(to%,s flags%) OR vz _bit%) 
+12260 PRINT $(stations%+to3¥*stationsniazme%)+;s" "; 
+12270 ENDIF 
+12280 t1l% = FNfindto(to%, v$%) 
+12290 IF FNgetsinfo(to%, s_tocount%) > 1 AND NOT t2% THEN 
+12300 1% = v% 
+12310 i% = FNfindto(to%, Jj%) 
+12320 WHILE i% <> -1 
+12330 IF FNgetsinfo(i%, s_flags%) < 64 THEN 
+12340 slist% (lptr%, 0) = to% 
+12350 slist3 (lptr%, 1) = i% 
+12360 lptrs += 1 
+12370 ENDIF 
+12380 1% = FNfindto (to%, 73%) 
+12390 ENDWHILE 
+
+12400 ENDIF 
+12410 UNTIL tl1l% <> =-1 OR t2% 
+12420 bptr% += 1 
+12430 ENDWHILE 
+
+12440 
+12450 COLOUR 12 
+12460 PROCputsinfo(slist%(0, 0), s_flags%, mo bit¥) 
+12470 PROCtotal 
+12480 PRINT FNnewline 
+12490 ELSE 
+12500 PROCrepor(7t) 
+12510 ENDIF 
+12520ELSE 
+12530 PROCrepor(2t) 
+12540ENDIF 
+12550ENDPROC 
+
+12560 
+12570DEF FNfindvector (from%, to%) 
+12580v% = 0 
+12590WHILE (FNgetvinfo (v%,v_from%)<>from% OR FNgetvinfo(v%,v_to%)<>to%) AND (v%<info%!svue 
+|c%) 
+12600 vd += 1 
+12610ENDWHILE 
+
+12620= v% 
+12630 
+12640DEF FNfindto (from%, RETURN v$%) 
+12650LOCAL tmp% 
+12660WHILE (FNgetvinfo(v%, v_from%) <> from%) AND (v% < info%!su_vec%) 
+12670 vd += 1 
+12680ENDWHILE 
+12690IF v% < (info%!su vec%) THEN 
+12700 tmp% = FNgetvinfo(v%, v to%) 
+12710 v$% += 1 BN 
+12720 = tmp% 
+12730ELSE
+
+
+
+12740 = -1 
+12750ENDIF 
+12760 
+12770DEF FNfrom(to%, RETURN v%) 
+12780LOCAL v3, 1%, 3%, k3% 
+12790REM Given a 'to' station, find vector and return the 'from' station 
+12800REM If there is more than one, then find the non-closure route 
+12810i% = FNgetsinfo(to%, s_tocount%) 
+12820IF i% > 1 THEN 
+12830 js = 0 
+12840 REPEAT 
+12850 k% = FNfindfrom(to%, v%) 
+12860 3% += 1 
+12870 UNTIL (NOT FNtbit (FNgetsinfo(k%, s _flags%), cl _bit%)) OR i%=3]% 
+12880 IF FNtbit (FNgetsinfo(k%, s_flags%), cl bit%) THEN PROCrepor(9t) 
+12890 = k% 
+12900ELSE 
+12910 = FNfindfrom(to%, v%) 
+12920ENDIF 
+12930 
+12940DEF FNfindfrom(to%, RETURN v%) 
+12950LOCAL tmp% 
+12960WHILE (FNgetvinfo(v%, v_to%) <> to%) AND (v% < info%!su vec%) 
+12970 vs += 1 
+12980ENDWHILE 
+12990IF v% < (info%!su vec%) THEN 
+13000 tmp% = FNgetvin(fv3o, v_from%) 
+13010 vs += 1 
+13020 = tmp%3 
+13030ELSE 
+13040 = -1 
+13050ENDIF 
+13060 
+13070DEF PROCunits 
+13080CASE FNreaditems OF 
+13090 WHEN "METRIC" 
+13100 unit factor = 1.0 
+13110 WHEN "FEET" 
+13120 unit factor = 0.3048 
+13130 WHEN "CONVERT" 
+13140 unit factor = FNreadint(Reawm) 
+13150 OTHERWISE 
+13160 PROCreport (102) 
+13170 unit factor = 1.0 
+13180ENDCASE 
+13190PRINT FNnewline 
+13200ENDPROC 
+13210 
+13220DEF PROCstyle 
+13230CASE FNreaditems OF 
+13240 WHEN "NORMAL" 
+13250 style = Normal 
+13260 WHEN "DIVING" 
+13270 REM Diving must be accompanied by a survey station and initial depth 
+13280 PRINT FNnewline 
+13290 IF NOT FNexists (FNreaditem s, t1l%) THEN PROCrepor(0t) 
+13300 depth = FNreadni(tUneitms) 
+13310 style% = Diving 
+13320 WHEN "“UPDOWN" 
+
+13330 style% = UpDown 
+13340 OTHERWISE 
+13350 PROCreport (100) 
+13360 style% = Normal 
+13370ENDCASE 
+13380PRINT FNnewline 
+13390ENDPROC 
+
+13400 
+13410DEF PROCgauge 
+13420REM Read adjustments for depth gauge readings 
+13430surface depth = FNreadni(tUneitms) 
+13440gauge factor = FNreadni(tUneitms) 
+
+
+
+13450PRINT FNnewline 
+1346 0ENDPROC 
+
+13470 
+13480DEF PROCchange 
+13490REM Read adjustments for compass and clinometer readings 
+13500compass_adj = FNreadni(tUneitms) 
+13510clino_adj FNreadni(tUneitms) 
+13520PRINT FNnewline 
+13530ENDPROC 
+13540 
+13550DEF PROCformat 
+13560CASE FNreaditems OF 
+13570 WHEN "FREE" 
+
+13580 format% = Free 
+13590 WHEN “FIXED" 
+
+13600 format% = Fixed 
+13610 OTHERWISE 
+
+13620 PROCreport (103) 
+13630 format% = Free 
+13640ENDCASE 
+
+13650PRINT FNnewline 
+1366 0ENDPROC 
+
+13670 
+13680DEF PROCnewfile(file$S) 
+13690files% += 1 
+13700IF files% > maxfiles% THEN 
+13710 PROCreport (101) 
+13720ELSE 
+13730 handle% (files%) = OPENIN(file$) 
+13740 file$S(files%) = file$ 
+13750 IF handle%(files%) = 0 THEN 
+13760 PROCrepor(3t) 
+13770 files% -= 1 
+13780 ELSE 
+13790 PRINT FNnewline 
+
+13800 ENDIF 
+13810ENDIF 
+
+13820ENDPROC 
+
+13830 
+13840DEF PROCendfile 
+13850PRINT "Closing file ";file$S(files%) 
+13860CLOSE#handle% (files%) 
+13870handle% (files%) = 0 
+13880files% -=1 
+
+13890IF files% > 0 THEN 
+13900 PRINT "Continue input from "; file$S (files%) ; 
+13910 REPEAT a$ = GETS : UNTIL INSTR("YyNn", 
+
+13920 IF a$ = "N" OR a$ = "n" THEN end$% 
+13930ELSE 
+13940 end% = TRUE 
+13950ENDIF 
+
+1396 0ENDPROC 
+
+13970 
+13980DEF PROCsurveyleg 
+13990LOCAL toS, from$, pl, 1, b, i, dz, closure% 
+14000from$ = S$bufs 
+14010to$S = FNreaditems 
+140201 FNreadni(tUneitms) :REM length 
+14030b FNrena(Radw) -icomtpases_ amdj :REM bearing 
+14040CASE styled OF 
+14050 WHEN Normal 
+14060 i FNrean (Rdaw)i-ctlineo_amdj REM incline 
+
+14070 WHEN Diving 
+14080 i (FNreaditem n (Units) -surface_ depth) *gauge factor :REM abs. depth 
+14090 WHEN UpDown 
+14100 i FNreadni(tUneitms) :REM rel. depth
+14110ENDCASE 
+14120closure% FALSE 
+14130CASE FNexists (fromS, tl1l%) +FNexis(tto$sS, 
+14140 WHEN O :REM both stations unknown 
+14150 PROCrepor(1t) 
+
+
+
+14160 WHEN -2 :REM both stations are known 
+14170 closures = TRUE 
+14180 IF to$ = old_to$ THEN 
+14190 REM Swap stations if out of order 
+14200 SWAP from$, to$ 
+14210 SWAP tl%, t2% 
+14220 b = (b+180) MOD 360 :REM Reverse bearing 
+14230 IF style®% <> Diving THEN i = -1 :REM and negate inclination 
+14240 ENDIF 
+14250 PROCputsinfo(tl%, s_f romcount%, FNgetsinfo(tl%, s_fromcount%+1)) 
+14260 PROCputsinfo(t2%, s_tocount%, FNgetsinfo(tl%, s_tocount%+1)) 
+14270 WHEN -1 
+
+14280 IF t1% = (info%!su_sta%) THEN 
+14290 REM Swap stations if out of order 
+14300 SWAP from$, to$ 
+14310 SWAP tl1%, t2% 
+14320 b = (b+180) MOD 360 :REM Reverse bearing 
+14330 IF style% <> Diving THEN i = -i :REM and negate inclination 
+14340 ENDIF 
+14350 PROCputsinfo(tl%, s_fromcount3%, FNgetsinfo(tl%, s_fromcount%+1)) 
+14360ENDCASE 
+
+14370x = FNgetsinfo(tl%, s_x%) 
+14380y = FNgetsinfo(tl%, s_y%) 
+14390z = FNgetsinfo(tl%, s_z%) 
+14400CASE style% OF 
+14410 WHEN Normal 
+14420 REM Convert inclination to get vertical displacement 
+14430 dz = 1*SIN(RAD(1i)) 
+14440 WHEN Diving 
+14450 REM Calculate relative depth change and inclination 
+14460 dz = depth-i 
+14470 depth = i 
+14480 i = DEG(ASN(dz/l)) 
+14490 WHEN UpDown 
+14500 REM Calculate inclination from given vertical displacement 
+14510 dz = 1 
+14520 i = DEG(ASN(dz/1l)) 
+1453 0ENDCASE 
+14540pl = SQR(1*1 - dz*dz) 
+14550dx = pl * SIN (RAD (b)) 
+14560dy = pl * COS (RAD (b)) 
+14570w = FNreadni(tUneitms) 
+14580h FNreadni(tUneitms) 
+14590IF closure$% THEN 
+14600 PROCaddvec(tt1olr%, t2%, 1, b, i, dx, dy, dz) 
+14610 VDU 7 
+14620 COLOUR 9 
+14630 PRINT '"Loop Closure !'!" 
+14640 tx = FNgetsinfo (t2%, s_x%) 
+14650 ty = FNgetsinfo(t2%, s_y%) 
+14660 tz = FNgetsinfo (t2%, s_z%) 
+14670 ex = tx-(x+dx) 
+14680 ey = ty-(y+dy) 
+14690 ez = tz-(z+dz) 
+14700 PRINT "This passage survey is out by:" 
+14710 PRINT " x ,ex;"m" 
+
+14720 PRINT 11 y 11 : ey; "mm" 
+
+14730 PRINT " =z ",ez;"m" 
+
+14740 REM leg$ holds the start station 
+14750 REM vec% holds the start vector number 
+14760 REM leg% 1s the number of stations in this run minus 1 
+14770 ex = ex/ (leg%+1) 
+14780 ey = ey/ (leg%+l) 
+14790 ez = ez/ (leg%+1) 
+14800 PRINT "Adjusting : "; 
+14810 PROCgetvector (vecs, from%, to%, 1, b, i, dx, dy, dz) 
+14820 REPEAT 
+14830 dx += ex 
+14840 dy += ey 
+14850 dz += ez 
+14860 l = SQR(dx*dx + dy*dy + dz*dz)
+
+
+
+14870 b FNbearing(l, dx, dy) 
+14880 i = FNbearing(l, dy, dz) 
+14890 PROCputvector (vec%, from%, to%, 1, b, i, dx, dy, dz) 
+14900 PROCgetstation (from%, x, y, 2) 
+14910 PROCputstation(to%, x+dx, y+dy, z+dz) 
+14920 PROCputsinfo (to%, s flags%, FNgetsinfo(to%, s_flags%) OR cl bit%) 
+14930 PRINT $(stations%+to%*stationsize%+s_name3);" "; 
+14940 vec += 1 
+14950 PROCgetvector (vec%, from%, to%, 1, b, i, dx, dy, dz) 
+14960 UNTIL to% = t2% 
+14970 COLOUR 12 
+14980ELSE 
+14990 PROCaddstation(to$, x+dx, y+dy, z+dz, w, h, 0) 
+15000 PROCaddvector(tl%, t2%, 1, b, i, dx, dy, dz) 
+15010 PROCputsinfo(t2%, s_tocount%, FNgetsinfo(tl%, s_tocount%+1)) 
+15020ENDIF 
+15030IF from$ <> old to$ THEN 
+15040 leg$ = from$ 
+15050 leg = 1 
+15060 vec¥ = (info%!su vec%)-1 
+15070ELSE 
+15080 legs += 1 
+15090ENDIF 
+1510001d _to$ = to$ 
+15110PRINT FNnewline 
+15120ENDPROC 
+15130 
+15140DEF FNbearing(l, dx, dy) 
+15150LOCAL b 
+15160b = DEG(ACS(dy/1)) 
+15170IF dx < 0 THEN b = 360-b 
+15180= Db 
+15190 
+15200DEF FNreaditem n(cflags%) 
+15210LOCAL tmp 
+15220tmp = VAL (FNreaditesm) 
+15230CASE cflags% OF 
+15240 WHEN Raw 
+15250 = tmp 
+15260 WHEN Units 
+15270 = tmp*unit factor 
+15280 WHEN Internal 
+15290 = tmp*unit factor*factor% 
+15300ENDCASE 
+15310 
+15320DEF FNreaditems 
+15330LOCAL char%, c% 
+15340S5bufs = "" 
+15350c% = 0 
+15360PROCsk(i32p) 
+15370REPEAT 
+15380 char®% = FNchar 
+15390 buf%?c% = char% 
+15400 c% += 1 
+15410UNTIL char3 <= 32 
+15420REM Allow empty fields to be processed 
+15430IF char% <> 32 THEN PTR#handle% (files%) = PTR#handle%(files%) - 1 
+15440buf%? (c%-1) = CR 
+15450= Sbufs 
+15460 
+15470DEF FNconnv(neumrbetr) 
+15480REM Convert from current units only 
+15490REM unit factor converts the units to metric 
+15500= number*unit_ factor 
+15510 
+15520DEF FNnewline 
+15530LOCAL char%, sS$ 
+15540REPEAT 
+15550 char3% = FNchar 
+15560 s$ += CHRS (char¥%) 
+15570UNTIL char% < 32
+
+
+
+15580= s$ 
+15590 
+15600DEF PROCskip (char%) 
+15610REPEAT UNTIL FNchar <> char% 
+
+15620IF PTR#handle% (files%) <> 0 THEN PTR#handle% (files%)=PTR#handle% (files%) -1 
+1563 0ENDPROC 
+
+15640 
+15650DEF FNchar 
+15660LOCAL char% 
+15670IF EOF#handle%$(files%) THEN 
+15680 end%$ = TRUE 
+15690 char% = CR 
+15700ELSE 
+15710 char% = BGET#handle%(files%) 
+15720ENDIF 
+
+15730IF char% < 32 THEN char% = CR 
+15740= char% 
+15750 
+15760DEF FNgetsinfo(s%, s_off%) 
+15770= (stations%! (s%*stationsize% + s_off%))/factor% 
+15780 
+15790DEF PROCputsinfo(s%, s_off%, d%) 
+15800stations%! (s%*stationsize% + s_off%) = d¥*factor? 
+1581 0ENDPROC 
+15820 
+15830DEF FNgetvinfo(v%, v_off%) 
+15840= (vectors%! (v¥*vectorsize% + v_off%))/factor$ 
+15850 
+1586 0DEF PROCgetstation(s%, RETURN x, RETURN y, RETURN z) 
+15870mem% = stations%+s%*stationsize% 
+15880x = (mem%!s x%)/factor? 
+15890y = (mem%!s_y%)/factor% 
+15900z = (mem%!s_z%)/factor? 
+1591 0ENDPROC 
+15920 
+15930DEF PROCputstation(s%, x, y, 2) 
+15940mem% = stations%+s%*stationsize? 
+15950mem%!xs% = x*factor$% 
+15960mem%!ys% = y*factor$ 
+15970mem%!zs% = z*factor% 
+15980ENDPROC 
+15990 
+16000DEF PROCaddstation (name$, x, vy, z, w, h, flags%) 
+16010LOCAL x%, y%, z% 
+16020IF (info%!su sta%) = maxstations% THEN PROCrepor(5t) 
+16030x% = x*factor% 
+16040y% = y*factor$ 
+16050z% = z*factor% 
+16060mem% = stations%+(info%!su_sta%) *stationsize% 
+16070PRINT name$; TAB(10) ;x;TAB(25);y;TAB(40);z; 
+160808 (mem%+s_name%) = name$ 
+16090mem%!s tocount%® = 0 
+16100mem%!s fromcount% = 0 
+16110mem%!s flags% = flags% 
+16120mem%!xs% = 
+16130mem%3!s_y% = 
+16140mem%¥!sz_% = 
+16150mem%!ws% = w*factor$ 
+l6l160mem%!hs% = h*factor% 
+16170info%!su_sta% += 1 
+16180info%! (surveysize3+station no%) += 1 
+16190IF x% > info%!x max% THEN info%!x max% = x% 
+16200IF x% < info%!x min% THEN info%!x min% = x% 
+16210IF y% > info%!y max% THEN info%'y max% = y% 
+16220IF y% < info%'!y min% THEN info%!y min% = y% 
+16230IF z% > info%!z max$ THEN info%!z max$ = z% 
+16240IF z% < info%!z min% THEN info%'z min% = z% 
+16250ENDPROC 
+16260 
+16270DEF PROCgetvector(v%, RETURN f%, RETURN t%, RETURN 1, RETURN b, RETURN i, 
+i RETURN dx, RETURN dy, RETURN dz)
+
+NX 
+o\° o® oP 
+
+
+
+16280mem?% = vectors%t+v¥*vectorsize? 
+16290£f% = (mem%!v_from%)/factor% 
+16300t% = (mem%'!'v_to%)/factor% 
+163101 (mem? !v_length%) /factor3 
+16320b (mem%!v_bearing%) /factor$% 
+163301 (mem%!v_incline%) /factor? 
+16340dx (mem% !'v_dx%) /factor% 
+16350dy (mem%!v_dy%) /factor% 
+16360dz = (mem%!v_dz%) /factor% 
+16370ENDPROC 
+16380 
+16390DEF PROCputvect(ov3r,  from3, to%, 
+16400mem% = vectors%+vi*vectorsize% 
+16410mem%!v_from% = from%¥*factor% 
+16420mem3!v_to% = to%*factor% 
+16430mem%!v_length% = l*factor% 
+16440mem%!v_bearing% = b*factor% 
+16450mem%!v_incline%¥ = i*factor% 
+16460mem%!v_dx% = dx*factors$ 
+16470mem%!v_dy% dy*factor% 
+16480mem%!v_dz% dz*factor% 
+16490ENDPROC 
+16500 
+16510DEF PROCaddvector (from%, 
+16520IF (info%!su_vec%) = maxvectors$ THEN PROCrepor(6t) 
+16530PROCputvector (info%!su vec%, from%, to%, 1, b, i, dx, dy, dz) 
+16540info%_!vsecu% += 1 
+16550info%! (surveysize%¥+vector no%) += 1 
+16560ENDPROC 
+16570 
+16580DEF PROCtotal 
+16590LOCAL t 
+16600FOR tl1% = 0 TO (info%!su vec%)-1 
+16610 t += FNgetvinfo(tl%, v_length%) 
+16620NEXT 
+16630info%!total_len% = t*xfactor% 
+16640info%! (surveysize%+survey len%) = t*factor$% 
+16650ENDPROC 
+16660 
+16670DEF FNexists (station$, RETURN s%) 
+16680LOCAL found% 
+16690REM Search for named station, returns TRUE/FALSE and index s% 
+16700REM If s% > info%!su sta% THEN the station was not found 
+16710s% = 0 
+16720found% = FALSE 
+16730WHILE (s% < (info%!su sta%)) AND (NOT found3) 
+16740 IF $(stations%+s%*stationsiznea%me+%s)  = station$ THEN 
+16750 founds = TRUE 
+16760 ELSE 
+16770 s% += 1 
+16780 ENDIF 
+16790ENDWHILE 
+16800= found% 
+16810 
+16820DEF PROCreport (ern%) 
+16830PRINT 
+16840VDU 7 
+16850CASE ern% OF 
+16860 WHEN 0 : PRINT "Missing or undefined survey station for DIVING" 
+16870 WHEN 1 PRINT "Both stations undefined, have you specified an ORIGIN" 
+16880 WHEN 2 PRINT "Survey station unknown for MOLE PHONE location" 
+16890 WHEN 3 PRINT "Can't find input file" 
+16900 WHEN 4 PRINT "Origin is re-defining existing station!™ 
+16910 WHEN 5 PRINT "Too many survey stations" 
+16920 WHEN 6 PRINT "Too many survey legs" 
+16930 WHEN 7 PRINT "MOLE station must follow leg data” 
+16940 WHEN 8 PRINT "Can't find station for MOLE correction” 
+16950 WHEN 9 PRINT "Cannot find un-closed leg for MOLE correction" 
+16960 WHEN 100 PRINT "Missing or unknown survey STYLE" 
+16970 WHEN 101 PRINT "File nesting too deep, ignoring data" 
+16980 WHEN 102 PRINT "Unknown UNITS, metric assumed"
+
+
+
+16990 WHEN 103 : PRINT "Unknown FORMAT, free format assumed" 
+17000 WHEN 104 : PRINT "Missing END keyword" 
+17010 WHEN 105 : PRINT "Can't reach destination station for MOLE correction" 
+17020ENDCASE 
+17030IF ern% < 100 THEN 
+17040 COLOUR 11 
+17050 PRINT ''"Fatal error occurred on input"'' 
+17060 COLOUR 12 
+17070 Rs = &90A 
+17080 CLOSE#0 
+17090 error% = TRUE 
+17100ENDIF 
+
+17110PRINT ° 
+
+17120ENDPROC 
+
+17130 
+17140DEF PROCcontinue 
+17150PRINT "Press MOUSE to continue” 
+17160PROCmous(3e) 
+17170ENDPROC 
+17180 
+17190DEF PROCmouse (flg%) 
+17200*Fx 21 9 
+17210omx% = mx% 
+17220omy% = my% 
+17230omb% = mb% 
+17240IF FNtbit (f1g%, 1) THEN REPEAT MOUSE mx%,my$%,mb%:UNTIL mb% > 0 
+17250IF FNtbit (fl1g%, 2) THEN REPEAT MOUSE mx%,my%,mb%:UNTIL mb$% = 0 
+17260IF FNtbit (f1lg%, 4) THEN REPEAT MOUSE mx%,my%,mb3%:UNTILmx%$<>omx3ORmy3<>omy%3 
+
+17270MOUSE mx3, my%, mb%3 
+1728 0ENDPROC 
+
+17290 
+17300DEF PROCmousep(ox3s, V5%) 
+17310PROCosr(e37f,  FNvtowx(mx%)/factor%, FNvtowy(my%)/factor%, "OS Ref: ") 
+17320ENDPROC 
+
+17330 
+17340DEF PROCarea (1x%, by%, rx%, ty%, cl%, c2%) 
+17350GCOL cl1% 
+17360RECTANGLE FILL 1x%, by%, rx%-1x%, ty%-by% 
+17370GCOL c2% 
+17380RECTANGLE 1x%, by3%, rx%-1x%, ty%-by% 
+17390ENDPROC 
+
+17400 
+17410DEF PROCupdate(x%, y%, s$, fw3%, fc%, bcH) 
+17420FOR b% = 1 TO 2 
+17430 SYS "OS Byte", 112, b% 
+17440 PROCgpri(nx%t, y%, STRINGS (fw%, CHR$(255)), bc%) 
+17450 PROCgpri(nx%t, y%, s$, fc%) 
+17460NEXT 
+17470SYS "OS Byte", 112, bank% 
+17480ENDPROC 
+
+17490 
+17500DEF PROCgpri(nx%t, v%, s$, c%) 
+17510VDU 5 
+17520GCOL c% 
+17530MOVE x%, V% 
+17540PRINT s$; 
+17550VDU 4 
+
+175600FF 
+17570ENDPROC 
+
+17580 
+17590DEF FNprintf(v, fw%, fl1l%) 
+17600REM Print value v in a field width of fw$% 
+17610REM £f1% bit 0 = 0 left justify = 1 right justify 
+17620REM bit 1 = 0 pad with spaces = 1 pad with zeros 
+17630IF FNtbit (£1%, 2) THEN 
+
+17640 p$ = STRINGS (fw, "0") 
+17650ELSE 
+17660 pS = STRINGS (fwd, " ") 
+
+17670ENDIF 
+
+17680IF FNtbit (£f1%, 1) THEN 
+17690 = RIGHTS (p$+STRSv, fw%)
+
+
+
+17700ELSE 
+17710 = LEFTS (STRSv+pS, fw%) 
+17720ENDIF 
+17730 
+17740DEF FNinput (x%, y3%, dS, 1%, fc3, bc%) 
+177500N 
+17760*Fx 21 0 
+17770COLOUR fc3% 
+17780COLOUR 128+bc% 
+17790PRINT TAB (x%, y%) dS; 
+17800REPEAT 
+
+17810 k% = INKEY (0) 
+
+17820 CASE k% OF 
+17830 WHEN 127 
+17840 IF d$ <> ""™ THEN d$ = LEFTS$(d$, LEN(dS$)-1) 
+17850 PRINT TAB (xX%+LEN(dS$), y%);" "; 
+17860 WHEN 21 
+17870 PRINT TAB (x%, y%);STRINGS(LEN(dS), " ™): 
+17880 das = "" 
+17890 OTHERWISE 
+17900 IF k% > 31 AND k% < 127 AND LEN(d$) < 1% THEN d$ += CHRS (k%) 
+17910 ENDCASE 
+
+17920 IF k% > 0 THEN PRINT TAB (x%, Vvy%):dS; 
+
+17930UNTIL k% = 13 
+
+17940PRINT 
+
+179500FF 
+17960= ds 
+17970 
+17980DEF FNginput (x%, y%, d$, 1%, fc%, bc%) 
+179900N 
+18000*Fx 21 O 
+18010PROCupda(tx%e, v%, d$, 1%, fc%, bc%) 
+18020REPEAT 
+18030 k%$ = INKEY (0) 
+18040 CASE k% OF 
+18050 WHEN 127 
+18060 IF d$ <> "" THEN d$ = LEFTS$ (dS, LEN(dS)-1) 
+18070 WHEN 21 
+18080 ds = "" 
+18090 OTHERWISE 
+18100 IF k% > 31 AND k% < 127 AND LEN(d$) < 1% THEN d$ += CHRS (k%) 
+18110 ENDCASE 
+
+18120 IF k% > 0 THEN 
+
+18130 PROCupda(tx%e, y%, dS, 1%, fc%, bc%) 
+18140 ENDIF 
+
+18150UNTIL k% = 13 
+181600FF 
+18170= 48 
+18180 
+18190DEF FNtbit (d%, mask$%) 
+18200= (d% AND mask%) > 0 
+18210 
+18220DEF FNwtovx(x%) 
+18230= (x%-0S_1x%) *OS_ScreenX/wxlim% 
+18240 
+18250DEF FNwtovy(y%) 
+18260= (y%-0S_by%) *OS_ScreenY¥/wylim% 
+18270 
+18280DEF FNvtowx (x%) 
+18290= INT (x3%*wxlim%/0S_ScreenX+wlx%) 
+18300 
+18310DEF FNvtowy (y%) 
+18320= INT (y%*wylim%/0S_ScreenY+wby%) 
+18330 
+18340DEF PROCtrig 
+18350DIM sin (359), cos (359) 
+
+18360FOR a = 0 TO 359 
+18370 sin(a) = SIN(RAD(a)) 
+18380 cos (a) = COS(RAD(a)) 
+183 90NEXT 
+
+18400ENDPROC
+
+
+
+18410 
+18420DEF PROCprintpic(fileS$) 
+18430file% = OPENOUT (file$) 
+18440LOCAL e%, eS 
+18450LOCAL ERROR 
+184600N ERROR LOCAL RESTORE ERROR : PROCrderr : CLOSE#file% PROCerr 
+
+18470SYS selectjob%, file% TO old% 
+18480LOCAL ERROR 
+
+184900N ERROR LOCAL RESTORE ERROR : PROCrderr SYS abort jobs, file$% SYS selectjo
+Ib%, 0ld% PROCerr 
+18500SYS giverect%, 1, wnd%, mat%, org%, &ffffff00 
+18510SYS drawpage%, 1, blk%, 0, 0 TO copies%,, 1id% 
+18520WHILE copies% <> 0 
+18530 PROCshowsurvey (blk%, TRUE) 
+18540 SYS getrect%,, blk% TO copies%,, id% 
+18550ENDWHILE 
+
+18560SYS endjob%, file% 
+18570RESTORE ERROR 
+
+18580SYS selectjob%, o0ld% 
+18590RESTORE ERROR 
+
+18600CLOSE #file% 
+186 10ENDPROC 
+
+18620 
+18630DEF PROCsetblock (blk%, pl%, p2%, p3%, p4%) 
+18640REM Set up parameter block 
+18650blk%!0 = pl% 
+18660blk%!4 = p2% 
+18670blk%!8 = p3% 
+18680blk%!12 = p43 
+186 90ENDPROC 
+18700 
+18710DEF PROCrderr 
+
+18720e% = ERR 
+18730e$ = REPORTS 
+18740ENDPROC 
+
+18750 
+18760DEF PROCerr 
+
+18770CLOSE #0 
+18780MODE 12 
+18790ERROR e3%, e€$ + "(from line " + STRS(ERL) + ")" 
+18800ENDPROC 
+18810 
+18820DEF PROCerror (eptr%) 
+18830t1% = 4 
+18840WHILE eptr3?tl% <> 0 AND tl1% < 33 
+
+18850 buffs? (tl1l%-4) = eptr%?tl% 
+18860 tls += 1 
+18870ENDWHILE 
+
+18880buf%?(t1%-4) = 13 
+18890PROCupdate (v1x%+1l6, vty%+48, S$buf%, 33, 0, 8) 
+18900VDU 7 
+18910TIME = 0 
+
+18920REPEAT UNTIL TIME > 200 
+
+1893 0ENDPROC 
+
+18940 
+18950DEF PROCshowinfo 
+18960PRINT "Surveys ";info%!survneoy% 
+18970PRINT "Stations: ";info%!'su sta% 
+18980PRINT "Vectors ";info%!su_vec% 
+18990FOR s% = 1 TO info%!survneoy% 
+19000 mems = info%+s%*surveysize% 
+19010 PRINT "Stations ";mem%!statinoon% 
+19020 PRINT "Vectors ";m! vectomr _%no% 
+19030 PRINT "Start Sta: ";mem%!stastrat% 
+19040 PRINT "Start Vec: ";mem%!staverct% 
+19050 PRINT "Length ";mem% !survey len% 
+19060 PRINT "Title ";S (mem%+titled) 
+19070 PRINT "People ";S$ (mem%+people%) 
+19080 PRINT "Date ";S$ (mem%+date%) 
+19090 PRINT "Scale ";S (mem%+0S Scale%) 
+19100NEXT BN 
+
+
+
+1911 0ENDPROC 
+19120 
+19130DEF PROCshowstations 
+19140FOR s% = 0 TO info%!su sta%-1 
+19150 mem% = stations%$+s%$*stationsize$ 
+19160 PRINT s% 
+
+19170 PRINT "x ";mem3!xs% 
+19180 PRINT "y : ";mem%!ys% 
+19190 PRINT "z ";mem3!zs% 
+19200 PRINT "w : ";mem%!ws% 
+19210 PRINT "h : ";mem%3!_hs% 
+19220 PRINT "name ";$ (mem%+s name%) 
+19230NEXT 
+1924 0ENDPROC 
+
+19250 
+19260DEF PROCbold (flag?) 
+19270IF flag% THEN 
+19280 vDU 1,27,1,ASC"G" 
+19290ELSE 
+19300 vDU 1,27,1,ASC"H" 
+19310ENDIF 
+
+19320ENDPROC 
+19330 
+19340DEF PROCcentre (flags) 
+19350IF flag% THEN 
+19360 vpu 1,27,1,ASC"a",1,ASC"1" 
+19370ELSE 
+19380 vbu 1,27,1,ASC"a",1,ASC"0" 
+19390ENDIF 
+19400ENDPROC 
+
+19410 
+19420DEF PROCdAw (flag%) 
+19430IF flag% THEN 
+19440 vpvU 1,27,1,ASC"w",1,ASC"1",1,27,1,ASC"W",1,ASC"1" 
+19450ELSE 
+
+19460 vpbuU 1,27,1,ASC"w",1,ASC"0",1,27,1,ASC"W",1,ASC"0O" 
+19470ENDIF 
+
+19480ENDPROC 
+19490 
+19500DEF PROCeject 
+19510vDU 1, 12 
+19520ENDPROC
